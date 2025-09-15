@@ -1105,6 +1105,11 @@ export function update_stream_sidebar_for_narrow(filter: Filter): JQuery | undef
     // we want to the topics list here.
     update_inbox_channel_view_callback(stream_id);
     topic_list.rebuild_left_sidebar($stream_li, stream_id);
+    if (info.topic_selected) {
+        topic_list.left_sidebar_scroll_zoomed_in_topic_into_view();
+    } else {
+        scroll_stream_into_view($stream_li);
+    }
     topic_list.topic_state_typeahead?.lookup(true);
     return $stream_li;
 }
