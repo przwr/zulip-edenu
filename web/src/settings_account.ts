@@ -923,6 +923,9 @@ export function set_up(): void {
     // PORTAL EDENU: Hide API key section
     $("#api_key_button_box").hide();
 
+    // PORTAL EDENU: Hide Deactivate Account section - users cannot deactivate their accounts
+    $("#deactivate_account_container").hide();
+
     render_user_timezone_dropdown_widget();
 
     $<HTMLInputElement>("#automatically_offer_update_time_zone").on("change", function (e) {
