@@ -226,13 +226,17 @@ POLICIES_DIRECTORY: str = "zerver/policies_absent"
 
 # Security
 ENABLE_FILE_LINKS = False
-ENABLE_GRAVATAR = True
+# PORTAL EDENU: Disable Gravatar
+ENABLE_GRAVATAR = False
 ## Overrides the above setting for individual realms, by integer ID.
 GRAVATAR_REALM_OVERRIDE: dict[int, bool] = {}
 INLINE_IMAGE_PREVIEW = True
 INLINE_URL_EMBED_PREVIEW = True
-NAME_CHANGES_DISABLED = False
-AVATAR_CHANGES_DISABLED = False
+# PORTAL EDENU: Disable user avatar changes
+AVATAR_CHANGES_DISABLED = True
+# PORTAL EDENU: Disable user name changes
+NAME_CHANGES_DISABLED = True
+
 PASSWORD_MIN_LENGTH = 6
 PASSWORD_MAX_LENGTH = 100
 PASSWORD_MIN_GUESSES = 10000

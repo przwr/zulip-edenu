@@ -277,6 +277,7 @@ def do_create_realm(
         RealmUserDefault.objects.create(
             realm=realm,
             email_address_visibility=get_email_address_visibility_default(realm.org_type),
+            allow_private_data_export=True,  # PORTAL EDENU: Enable data export by default for new users
         )
 
         create_system_user_groups_for_realm(realm)

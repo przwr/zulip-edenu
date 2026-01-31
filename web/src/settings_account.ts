@@ -914,6 +914,15 @@ export function set_up(): void {
         user_avatar_widget_created = true;
     }
 
+    // PORTAL EDENU: Hide Gravatar link since avatar changes are disabled
+    $("#user-avatar-source").hide();
+
+    // PORTAL EDENU: Hide Privacy section
+    $("#privacy_settings_box").hide();
+
+    // PORTAL EDENU: Hide API key section
+    $("#api_key_button_box").hide();
+
     render_user_timezone_dropdown_widget();
 
     $<HTMLInputElement>("#automatically_offer_update_time_zone").on("change", function (e) {
