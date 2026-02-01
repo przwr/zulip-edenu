@@ -19,14 +19,14 @@ STATIC_AVATARS_DIR = "images/static_avatars/"
 
 DEFAULT_AVATAR_FILE = "images/default-avatar.png"
 
-# EDENU CUSTOMIZATION: Custom avatar from profile field
+# PORTAL EDENU: Custom avatar from profile field
 EDENU_CUSTOM_AVATAR_FIELD_NAME = "Profilowe"
 EDENU_CUSTOM_AVATAR_BASE_URL = "https://centrum.edenu.pl/media/user-pictures/"
 
 
 def get_custom_avatar_url_from_profile_field(user_profile: UserProfile) -> str | None:
     """
-    EDENU CUSTOMIZATION: Get avatar URL from custom profile field named 'avatar'.
+    PORTAL EDENU: Get avatar URL from custom profile field named 'avatar'.
     Returns None if custom field doesn't exist or user has no value.
     This function can be safely removed when rebase with upstream.
     """
@@ -49,7 +49,7 @@ def get_custom_avatar_url_from_profile_field(user_profile: UserProfile) -> str |
 def avatar_url(
     user_profile: UserProfile, medium: bool = False, client_gravatar: bool = False
 ) -> str | None:
-    # EDENU CUSTOMIZATION: Check for custom avatar from profile field first
+    # PORTAL EDENU: Check for custom avatar from profile field first
     custom_avatar_url = get_custom_avatar_url_from_profile_field(user_profile)
     if custom_avatar_url:
         return custom_avatar_url
