@@ -20,7 +20,7 @@ STATIC_AVATARS_DIR = "images/static_avatars/"
 DEFAULT_AVATAR_FILE = "images/default-avatar.png"
 
 # EDENU CUSTOMIZATION: Custom avatar from profile field
-EDENU_CUSTOM_AVATAR_FIELD_NAME = "avatar"
+EDENU_CUSTOM_AVATAR_FIELD_NAME = "Profilowe"
 EDENU_CUSTOM_AVATAR_BASE_URL = "https://centrum.edenu.pl/media/user-pictures/"
 
 
