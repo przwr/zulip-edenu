@@ -233,6 +233,11 @@ def maybe_send_to_registration(
                 orjson.dumps(params_to_store_in_authenticated_session).decode(),
                 expiry_seconds=EXPIRABLE_SESSION_VAR_DEFAULT_EXPIRY_SECS,
             )
+        # PORTAL EDENU: Mark this session as coming from external auth (SAML, OIDC, etc.).
+        # We'll log the user out after account creation so they need to login
+        # again, which triggers sync_user_profile_custom_fields() to populate
+        # custom profile fields from the IdP.
+        request.session["from_external_auth"] = True
 
     try:
         # TODO: This should use get_realm_from_request, but a bunch of tests

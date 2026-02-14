@@ -7,7 +7,7 @@ from urllib.parse import urlencode, urljoin
 
 import orjson
 from django.conf import settings
-from django.contrib.auth import REDIRECT_FIELD_NAME, authenticate, get_backends
+from django.contrib.auth import REDIRECT_FIELD_NAME, authenticate, get_backends, logout
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.sessions.backends.base import SessionBase
 from django.core import validators
@@ -930,6 +930,12 @@ def login_and_go_to_home(request: HttpRequest, user_profile: UserProfile) -> Htt
     desktop_flow_otp = get_expirable_session_var(
         request.session, "registration_desktop_flow_otp", delete=True
     )
+    # PORTAL EDENU: Check if this user registered via external auth (SAML, OIDC, etc.).
+    # If so, we need to log them out and have them login again so that
+    # sync_user_profile_custom_fields() is called to populate custom profile
+    # fields from the IdP. This is set in maybe_send_to_registration().
+    from_external_auth = request.session.pop("from_external_auth", False)
+
     if mobile_flow_otp is not None:
         return finish_mobile_flow(request, user_profile, mobile_flow_otp)
     elif desktop_flow_otp is not None:
@@ -946,6 +952,12 @@ def login_and_go_to_home(request: HttpRequest, user_profile: UserProfile) -> Htt
         )
 
     do_login(request, user_profile)
+    # PORTAL EDENU: Log out external auth users so they need to login again,
+    # which triggers sync_user_profile_custom_fields() to populate custom profile fields.
+    if from_external_auth:
+        logout(request)
+        return HttpResponseRedirect(reverse("login", query={"email": user_profile.delivery_email}))
+
     # Using 'mark_sanitized' to work around false positive where Pysa thinks
     # that 'user_profile' is user-controlled
     return HttpResponseRedirect(mark_sanitized(user_profile.realm.url) + reverse("home"))
