@@ -240,6 +240,8 @@ MIDDLEWARE = [
     "zerver.middleware.SetRemoteAddrFromRealIpHeader",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # PORTAL EDENU: Override session cookie for first-time logins (must be after AuthenticationMiddleware)
+    "zerver.middleware.FirstTimeLoginCookieMiddleware",
     # Important: All middleware before LogRequests should be
     # inexpensive, because any time spent in that middleware will not
     # be counted in the LogRequests instrumentation of how time was

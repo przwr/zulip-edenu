@@ -57,7 +57,7 @@ from zerver.lib.typed_endpoint_validators import (
 from zerver.lib.upload import upload_avatar_image
 from zerver.models import EmailChangeStatus, UserProfile
 from zerver.models.realms import avatar_changes_disabled, name_changes_disabled
-from zerver.models.users import ResolvedTopicNoticeAutoReadPolicyEnum
+from zerver.models.users import ResolvedTopicNoticeAutoReadPolicyEnum, UserBaseSettings
 from zerver.views.auth import redirect_to_deactivation_notice
 from zproject.backends import check_password_strength, email_belongs_to_ldap
 
@@ -441,7 +441,8 @@ def json_change_settings(
         privacy_setting_names = UserBaseSettings.SECURITY_SENSITIVE_USER_SETTINGS
         requested_privacy_settings = set(request_settings.keys()) & privacy_setting_names
         if requested_privacy_settings:
-            raise JsonableError(str(PRIVACY_SETTINGS_DISABLED_ERROR))
+            for setting in requested_privacy_settings:
+                request_settings.pop(setting, None)
 
     for k, v in request_settings.items():
         if v is not None and getattr(user_profile, k) != v:
