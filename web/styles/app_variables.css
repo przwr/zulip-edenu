@@ -2215,37 +2215,39 @@
         color-mix(in oklch, hsl(230deg 9% 60%) 18%, transparent)
     );
     /* Action buttons -- Brand Variant */
+    /* PORTAL-MOD: Changed main brand color from violet (254-261deg) to gold (#d4af37 = hsl(45deg 68% 53%)) */
     --color-text-brand-primary-action-button: light-dark(
         hsl(0deg 0% 100%),
         color-mix(in oklch, hsl(0deg 0% 100%) 85%, transparent)
     );
     --color-background-brand-primary-action-button: light-dark(
-        hsl(254deg 99% 68%),
-        hsl(261deg 79% 43%)
+        hsl(45deg 68% 53%),
+        hsl(45deg 60% 40%)
     );
+    /* PORTAL-MOD: End of brand color change */
     --color-background-brand-primary-action-button-hover: light-dark(
-        hsl(255deg 81% 61%),
-        hsl(258deg 66% 51%)
+        hsl(45deg 75% 48%),
+        hsl(45deg 65% 45%)
     );
     --color-background-brand-primary-action-button-active: light-dark(
-        hsl(258deg 66% 51%),
-        hsl(261deg 79% 43%)
+        hsl(45deg 65% 45%),
+        hsl(45deg 60% 40%)
     );
     --color-text-brand-quiet-action-button: light-dark(
-        hsl(264deg 95% 34%),
-        hsl(244deg 96% 82%)
+        hsl(45deg 85% 35%),
+        hsl(45deg 95% 75%)
     );
     --color-background-brand-quiet-action-button: light-dark(
-        color-mix(in oklch, hsl(254deg 99% 68%) 12%, transparent),
-        color-mix(in oklch, hsl(246deg 96% 79%) 12%, transparent)
+        color-mix(in oklch, hsl(45deg 68% 53%) 12%, transparent),
+        color-mix(in oklch, hsl(45deg 90% 80%) 12%, transparent)
     );
     --color-background-brand-quiet-action-button-hover: light-dark(
-        color-mix(in oklch, hsl(254deg 99% 68%) 17%, transparent),
-        color-mix(in oklch, hsl(246deg 96% 79%) 17%, transparent)
+        color-mix(in oklch, hsl(45deg 68% 53%) 17%, transparent),
+        color-mix(in oklch, hsl(45deg 90% 80%) 17%, transparent)
     );
     --color-background-brand-quiet-action-button-active: light-dark(
-        color-mix(in oklch, hsl(254deg 99% 68%) 22%, transparent),
-        color-mix(in oklch, hsl(246deg 96% 79%) 12%, transparent)
+        color-mix(in oklch, hsl(45deg 68% 53%) 22%, transparent),
+        color-mix(in oklch, hsl(45deg 90% 80%) 12%, transparent)
     );
     --color-text-brand-borderless-action-button: light-dark(
         hsl(255deg 54% 50%),
@@ -2603,17 +2605,19 @@
     );
     /* Banners - Brand Variant */
     --color-text-brand-banner: light-dark(
-        hsl(264deg 95% 34%),
-        hsl(244deg 96% 82%)
+        hsl(45deg 85% 35%),
+        hsl(45deg 95% 75%)
     );
+    /* PORTAL-MOD: Changed brand banner colors to gold */
     --color-border-brand-banner: light-dark(
-        color-mix(in oklch, hsl(254deg 60% 50%) 40%, transparent),
-        color-mix(in oklch, hsl(253deg 70% 89%) 40%, transparent)
+        color-mix(in oklch, hsl(45deg 68% 53%) 40%, transparent),
+        color-mix(in oklch, hsl(45deg 80% 85%) 40%, transparent)
     );
     --color-background-brand-banner: light-dark(
-        hsl(254deg 42% 94%),
-        hsl(254deg 49% 16%)
+        hsl(45deg 50% 96%),
+        hsl(45deg 60% 20%)
     );
+    /* PORTAL-MOD: End of brand banner color change */
     /* Banners - Info Variant */
     --color-text-info-banner: light-dark(
         hsl(241deg 95% 25%),
