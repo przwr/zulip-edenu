@@ -890,43 +890,7 @@ export function gravatar_url_for_email(email: string): string {
     return "https://secure.gravatar.com/avatar/" + hash + "?d=identicon";
 }
 
-// PORTAL EDENU: Get custom avatar URL from profile field
-function get_custom_avatar_url_from_profile_field(person: User | CurrentUser): string | null {
-    /**
-     * PORTAL EDENU: Get avatar URL from custom profile field named 'avatar'.
-     * Returns null if custom field doesn't exist or user has no value.
-     * This function can be safely removed when rebasing with upstream.
-     */
-    const CUSTOM_AVATAR_FIELD_NAME = "Profilowe";
-    const CUSTOM_AVATAR_BASE_URL = "https://centrum.edenu.pl/media/user-pictures/";
-
-    if (!person.profile_data) {
-        return null;
-    }
-
-    const avatar_field = realm.custom_profile_fields.find(
-        (field) => field.name === CUSTOM_AVATAR_FIELD_NAME,
-    );
-
-    if (!avatar_field) {
-        return null;
-    }
-
-    const avatar_value = person.profile_data[avatar_field.id]?.value;
-    if (!avatar_value) {
-        return null;
-    }
-
-    return CUSTOM_AVATAR_BASE_URL + avatar_value;
-}
-
 export function small_avatar_url_for_person(person: User | CurrentUser): string {
-    // PORTAL EDENU: Check for custom avatar from profile field first
-    const custom_avatar_url = get_custom_avatar_url_from_profile_field(person);
-    if (custom_avatar_url) {
-        return custom_avatar_url;
-    }
-
     if (person.avatar_url) {
         return person.avatar_url;
     }
@@ -943,12 +907,6 @@ export function medium_avatar_url_for_person(person: User): string {
     /* Unlike the small avatar URL case, we don't generally have a
      * medium avatar URL included in person objects. So only have the
      * gravatar and server endpoints here. */
-
-    // PORTAL EDENU: Check for custom avatar from profile field first
-    const custom_avatar_url = get_custom_avatar_url_from_profile_field(person);
-    if (custom_avatar_url) {
-        return custom_avatar_url;
-    }
 
     if (person.avatar_url === null) {
         person.avatar_url = gravatar_url_for_email(person.email);
