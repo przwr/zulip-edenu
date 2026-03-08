@@ -48,7 +48,6 @@ from zerver.lib.typed_endpoint import INTENTIONALLY_UNDOCUMENTED, ApiParamConfig
 from zerver.lib.user_agent import parse_user_agent
 from zerver.models import Realm
 from zerver.models.realms import get_realm
-from zerver.models.users import UserProfile
 from zproject.config import get_config
 
 ParamT = ParamSpec("ParamT")
@@ -774,55 +773,3 @@ class ZulipSCIMAuthCheckMiddleware(SCIMAuthCheckMiddleware):
             response = HttpResponse(status=401)
             response["WWW-Authenticate"] = scim_settings.WWW_AUTHENTICATE_HEADER
             return response
-
-
-class FirstTimeLoginCookieMiddleware:
-    """
-    PORTAL EDENU: Middleware to override session cookie with 10s expiry for first-time logins.
-
-    This must run AFTER django.contrib.sessions.middleware.SessionMiddleware and
-    django.contrib.auth.middleware.AuthenticationMiddleware because we need access
-    to request.user to check tos_version.
-    """
-
-    def __init__(self, get_response: Callable[[HttpRequest], HttpResponse]):
-        self.get_response = get_response
-
-    def __call__(self, request: HttpRequest) -> HttpResponse:
-        response = self.get_response(request)
-
-        # PORTAL EDENU: Check if this is a first-time login and override session cookie
-        # First-time logins have tos_version == "-1"
-        if (
-            hasattr(request, 'user')
-            and hasattr(request.user, 'tos_version')
-            and request.user.tos_version == UserProfile.TOS_VERSION_BEFORE_FIRST_LOGIN
-            and hasattr(request, 'session')
-            and request.session.session_key
-        ):
-            session_key = request.session.session_key
-
-            if session_key:
-                # Delete long-lived cookie that SessionMiddleware set
-                response.delete_cookie(settings.SESSION_COOKIE_NAME)
-
-                # Set new session cookie with 10-second expiry
-                response.set_cookie(
-                    settings.SESSION_COOKIE_NAME,
-                    session_key,
-                    max_age=10,
-                    path="/",
-                    domain=None,
-                    secure=getattr(settings, 'SESSION_COOKIE_SECURE', False),
-                    httponly=True,
-                    samesite="Lax",
-                )
-
-                # Log for debugging
-                logging.getLogger("zulip.auth").info(
-                    "Middleware: Overrode session cookie for first-time login user %s. Session key: %s",
-                    request.user.id,
-                    session_key,
-                )
-
-        return response
