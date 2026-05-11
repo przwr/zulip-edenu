@@ -12,16 +12,48 @@ from zerver.lib.thumbnail import MEDIUM_AVATAR_SIZE
 from zerver.lib.upload import get_avatar_url
 from zerver.lib.url_encoding import append_url_query_string
 from zerver.models import UserProfile
+from zerver.models.custom_profile_fields import CustomProfileFieldValue
 from zerver.models.users import is_cross_realm_bot_email
 
 STATIC_AVATARS_DIR = "images/static_avatars/"
 
 DEFAULT_AVATAR_FILE = "images/default-avatar.png"
 
+# PORTAL EDENU: Custom avatar from profile field
+EDENU_CUSTOM_AVATAR_FIELD_NAME = "Profilowe"
+EDENU_CUSTOM_AVATAR_BASE_URL = "https://centrum.edenu.pl/media/user-pictures/"
+
+
+def get_custom_avatar_url_from_profile_field(user_profile: UserProfile) -> str | None:
+    """
+    PORTAL EDENU: Get avatar URL from custom profile field named 'avatar'.
+    Returns None if custom field doesn't exist or user has no value.
+    This function can be safely removed when rebase with upstream.
+    """
+    try:
+        custom_avatar_field_value = CustomProfileFieldValue.objects.filter(
+            user_profile=user_profile,
+            field__name=EDENU_CUSTOM_AVATAR_FIELD_NAME,
+            field__realm_id=user_profile.realm_id,
+        ).first()
+
+        if custom_avatar_field_value and custom_avatar_field_value.value:
+            return EDENU_CUSTOM_AVATAR_BASE_URL + custom_avatar_field_value.value
+    except Exception:
+        # If anything goes wrong, fall back to standard avatar logic
+        pass
+
+    return None
+
 
 def avatar_url(
     user_profile: UserProfile, medium: bool = False, client_gravatar: bool = False
 ) -> str | None:
+    # PORTAL EDENU: Check for custom avatar from profile field first
+    custom_avatar_url = get_custom_avatar_url_from_profile_field(user_profile)
+    if custom_avatar_url:
+        return custom_avatar_url
+
     return get_avatar_field(
         user_id=user_profile.id,
         realm_id=user_profile.realm_id,

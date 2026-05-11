@@ -61,6 +61,8 @@ from zerver.models.users import ResolvedTopicNoticeAutoReadPolicyEnum
 from zerver.views.auth import redirect_to_deactivation_notice
 from zproject.backends import check_password_strength, email_belongs_to_ldap
 
+# PORTAL EDENU: Disable privacy settings and API key changes
+PRIVACY_SETTINGS_DISABLED_ERROR = gettext_lazy("Privacy settings are disabled in this organization.")
 AVATAR_CHANGES_DISABLED_ERROR = gettext_lazy("Avatar changes are disabled in this organization.")
 
 
@@ -433,6 +435,14 @@ def json_change_settings(
 
     # Loop over user_profile.property_types
     request_settings = {k: v for k, v in locals().items() if k in user_profile.property_types}
+
+    # PORTAL EDENU: Block privacy settings changes for non-admin users
+    if not user_profile.is_realm_admin:
+        privacy_setting_names = UserBaseSettings.SECURITY_SENSITIVE_USER_SETTINGS
+        requested_privacy_settings = set(request_settings.keys()) & privacy_setting_names
+        if requested_privacy_settings:
+            raise JsonableError(str(PRIVACY_SETTINGS_DISABLED_ERROR))
+
     for k, v in request_settings.items():
         if v is not None and getattr(user_profile, k) != v:
             do_change_user_setting(user_profile, k, v, acting_user=user_profile)
@@ -488,6 +498,10 @@ def delete_avatar_backend(request: HttpRequest, user_profile: UserProfile) -> Ht
 # a bot regenerating its own API key.
 @typed_endpoint_without_parameters
 def regenerate_api_key(request: HttpRequest, user_profile: UserProfile) -> HttpResponse:
+    # PORTAL EDENU: Block API key changes for non-admin users
+    if not user_profile.is_realm_admin:
+        raise JsonableError(str(PRIVACY_SETTINGS_DISABLED_ERROR))
+
     new_api_key = do_regenerate_api_key(user_profile, user_profile)
     json_result = dict(
         api_key=new_api_key,

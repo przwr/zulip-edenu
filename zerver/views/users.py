@@ -139,6 +139,10 @@ def deactivate_user_backend(
 
 
 def deactivate_user_own_backend(request: HttpRequest, user_profile: UserProfile) -> HttpResponse:
+    # PORTAL EDENU: Block self-deactivation for non-admin users
+    if not user_profile.is_realm_admin:
+        raise JsonableError(_("Self-deactivation is not allowed. Please contact an organization administrator."))
+    
     if UserProfile.objects.filter(realm=user_profile.realm, is_active=True).count() == 1:
         raise CannotDeactivateLastUserError(is_last_owner=False)
     if user_profile.is_realm_owner and check_last_owner(user_profile):

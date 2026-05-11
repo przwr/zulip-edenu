@@ -830,6 +830,19 @@ export function set_up(): void {
         user_avatar_widget_created = true;
     }
 
+    // PORTAL EDENU: Hide Gravatar link since avatar changes are disabled
+    $("#user-avatar-source").hide();
+
+    // PORTAL EDENU: Hide Privacy section
+    $("#privacy_settings_box").hide();
+
+    // PORTAL EDENU: Hide API key section
+    $("#api_key_button_box").hide();
+
+    // PORTAL EDENU: Hide Deactivate Account section - users cannot deactivate their accounts
+    $("#deactivate_account_container").hide();
+
+
     $("#user_timezone").val(user_settings.timezone);
 
     $<HTMLSelectElement>("select#user_timezone").on("change", function (e) {
