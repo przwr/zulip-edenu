@@ -36,6 +36,7 @@ from zerver.models import (
     UserMessage,
     UserProfile,
 )
+from zerver.models.custom_profile_fields import PORTAL_EDENU_HIDDEN_PROFILE_FIELD_NAMES
 from zerver.models.groups import SystemGroups, get_realm_system_groups_name_dict
 from zerver.models.realms import get_fake_email_domain, require_unique_names
 from zerver.models.users import (
@@ -1131,6 +1132,11 @@ def get_users_for_api(
 
     if include_custom_profile_fields:
         base_query = CustomProfileFieldValue.objects.select_related("field")
+        # PORTAL EDENU: Exclude hidden field values for non-owners
+        if acting_user is None or not acting_user.is_realm_owner:
+            base_query = base_query.exclude(
+                field__name__in=PORTAL_EDENU_HIDDEN_PROFILE_FIELD_NAMES
+            )
         # TODO: Consider optimizing this query away with caching.
         if target_user is not None:
             custom_profile_field_values = base_query.filter(user_profile=target_user)

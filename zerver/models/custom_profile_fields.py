@@ -1,6 +1,11 @@
 from collections.abc import Callable
 from typing import Any
 
+# PORTAL EDENU: Custom profile fields hidden from non-owner users in the API
+PORTAL_EDENU_HIDDEN_PROFILE_FIELD_NAMES: frozenset[str] = frozenset(
+    {"Profilowe", "Data urodzenia", "Drugie imię"}
+)
+
 import orjson
 from django.core.exceptions import ValidationError
 from django.db import models
