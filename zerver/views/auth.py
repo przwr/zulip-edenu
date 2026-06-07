@@ -176,6 +176,8 @@ def maybe_send_to_registration(
     multiuse_object_key: str = "",
     params_to_store_in_authenticated_session: dict[str, str] | None = None,
     role: int | None = None,
+    # PORTAL EDENU: Custom profile fields to sync during user creation
+    custom_profile_field_name_to_value: dict[str, Any] | None = None,
 ) -> HttpResponse:
     """Given a successful authentication for an email address (i.e. we've
     confirmed the user controls the email address) that does not
@@ -232,6 +234,14 @@ def maybe_send_to_registration(
                 orjson.dumps(params_to_store_in_authenticated_session).decode(),
                 expiry_seconds=EXPIRABLE_SESSION_VAR_DEFAULT_EXPIRY_SECS,
             )
+    # PORTAL EDENU: Store custom profile fields in session for user creation
+    if custom_profile_field_name_to_value:
+        set_expirable_session_var(
+            request.session,
+            "registration_custom_profile_field_name_to_value",
+            orjson.dumps(custom_profile_field_name_to_value).decode(),
+            expiry_seconds=EXPIRABLE_SESSION_VAR_DEFAULT_EXPIRY_SECS,
+        )
 
     try:
         # TODO: This should use get_realm_from_request, but a bunch of tests
@@ -375,6 +385,8 @@ def register_remote_user(request: HttpRequest, result: ExternalAuthResult) -> Ht
         "multiuse_object_key",
         "full_name_validated",
         "params_to_store_in_authenticated_session",
+        # PORTAL EDENU: Custom profile fields to sync during user creation
+        "custom_profile_field_name_to_value",
     ]
     for key in dict(kwargs):
         if key not in kwargs_to_pass:

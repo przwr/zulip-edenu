@@ -842,6 +842,27 @@ def registration_helper(
                 # form.
                 return redirect_to_email_login_url(email)
 
+        # PORTAL EDENU: Sync custom profile fields from IdP during user creation.
+        # These are stored in the session by maybe_send_to_registration().
+        custom_fields_json = get_expirable_session_var(
+            request.session,
+            "registration_custom_profile_field_name_to_value",
+            default_value=None,
+            delete=True,
+        )
+        if custom_fields_json and user_profile is not None:
+            from zproject.backends import sync_user_profile_custom_fields
+
+            custom_field_name_to_value = orjson.loads(custom_fields_json)
+            try:
+                sync_user_profile_custom_fields(user_profile, custom_field_name_to_value)
+            except Exception:
+                logger.warning(
+                    "PORTAL EDENU: Failed to sync custom profile fields for user %s",
+                    user_profile.id,
+                    exc_info=True,
+                )
+
         if realm_creation:
             # Because for realm creation, registration happens on the
             # root domain, we need to log them into the subdomain for

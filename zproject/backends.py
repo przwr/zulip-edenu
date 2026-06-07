@@ -17,7 +17,7 @@ import json
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from email.headerregistry import Address
 from typing import TYPE_CHECKING, Any, TypedDict, TypeVar, cast
 
@@ -1612,6 +1612,8 @@ class ExternalAuthDataDict(TypedDict, total=False):
     # The mobile app doesn't actually use a session, so this
     # data is not applicable there.
     params_to_store_in_authenticated_session: dict[str, str]
+    # PORTAL EDENU: Custom profile fields to sync during user creation
+    custom_profile_field_name_to_value: dict[str, Any]
 
 
 class ExternalAuthResult:
@@ -1917,6 +1919,8 @@ def sync_groups(
 class SocialAuthSyncNewUserInfo:
     role: int | None
     group_memberships_sync_map: dict[str, bool]
+    # PORTAL EDENU: Custom profile fields to sync during user creation
+    custom_profile_field_name_to_value: dict[str, Any] = field(default_factory=dict)
 
 
 def social_auth_sync_user_attributes(
@@ -2059,8 +2063,12 @@ def social_auth_sync_user_attributes(
         else:
             group_memberships_sync_map = {}
 
+        # PORTAL EDENU: Include custom profile fields in signup info so they can
+        # be applied after user creation.
         return SocialAuthSyncNewUserInfo(
-            role=new_role, group_memberships_sync_map=group_memberships_sync_map
+            role=new_role,
+            group_memberships_sync_map=group_memberships_sync_map,
+            custom_profile_field_name_to_value=custom_profile_field_name_to_value,
         )
 
     # Based on the information collected above, sync what's needed for the user_profile.
@@ -2425,6 +2433,11 @@ def social_auth_finish(
                     group_memberships_sync_map=social_auth_sync_new_user_info.group_memberships_sync_map,
                 )
             )
+            # PORTAL EDENU: Pass custom profile fields through for user creation
+            if social_auth_sync_new_user_info.custom_profile_field_name_to_value:
+                data_dict["custom_profile_field_name_to_value"] = (
+                    social_auth_sync_new_user_info.custom_profile_field_name_to_value
+                )
 
     result = ExternalAuthResult(user_profile=user_profile, data_dict=data_dict)
 
