@@ -20,6 +20,7 @@ from zerver.lib.avatar import avatar_url, get_avatar_field, get_avatar_for_inacc
 from zerver.lib.cache import cache_with_key, get_cross_realm_dicts_key
 from zerver.lib.create_user import get_dummy_email_address_for_display_regex
 from zerver.lib.exceptions import JsonableError, OrganizationOwnerRequiredError
+from zerver.lib.muted_users import get_muting_users, get_user_mutes
 from zerver.lib.string_validation import check_string_is_printable
 from zerver.lib.timestamp import timestamp_to_datetime
 from zerver.lib.timezone import canonicalize_timezone
@@ -37,6 +38,7 @@ from zerver.models import (
     UserMessage,
     UserProfile,
 )
+from zerver.models.custom_profile_fields import PORTAL_EDENU_HIDDEN_PROFILE_FIELD_NAMES
 from zerver.models.groups import SystemGroups, get_realm_system_groups_name_dict
 from zerver.models.realms import get_fake_email_domain, require_unique_names
 from zerver.models.users import (
@@ -1044,6 +1046,19 @@ def get_user_dicts_in_realm(
         all_user_dicts = get_partial_realm_user_dicts(realm.id, user_profile)
     else:
         all_user_dicts = get_realm_user_dicts(realm.id)
+
+    # PORTAL EDENU: user blocks — the portal's block feature mutes both sides,
+    # and a blocked pair must appear non-existent to each other (directory,
+    # right sidebar), not merely inaccessible. Realm admins still see everyone
+    # for moderation. Uses the cached get_muting_users (who muted me) plus one
+    # query for the users I muted; both sides are checked because the hourly
+    # reconcile keeps the rows symmetric, but a mid-sync state must not leak.
+    if settings.PORTAL_EDENU and user_profile is not None and not user_profile.is_realm_admin:
+        blocked_ids = {row["id"] for row in get_user_mutes(user_profile)} | get_muting_users(
+            user_profile.id
+        )
+        all_user_dicts = [d for d in all_user_dicts if d["id"] not in blocked_ids]
+
     if check_user_can_access_all_users(user_profile):
         return (all_user_dicts, [])
 
@@ -1113,6 +1128,9 @@ def get_users_for_api(
     # Spectators must never receive custom profile field values.
     if include_custom_profile_fields and acting_user is not None:
         base_query = CustomProfileFieldValue.objects.select_related("field")
+        # PORTAL EDENU: Exclude hidden field values for non-owners
+        if not acting_user.is_realm_owner:
+            base_query = base_query.exclude(field__name__in=PORTAL_EDENU_HIDDEN_PROFILE_FIELD_NAMES)
         # TODO: Consider optimizing this query away with caching.
         if target_user is not None:
             custom_profile_field_values = base_query.filter(user_profile=target_user)

@@ -386,6 +386,11 @@ const current_user_schema = z.object({
     is_moderator: z.boolean(),
     is_owner: z.boolean(),
     user_id: z.number(),
+    // PORTAL EDENU: {user_id -> portal UUID} for the reputation-bar click link.
+    // Populated by zerver.lib.events when realm_user is requested. Optional so a
+    // web load that doesn't request realm_user degrades to "no bar" instead of
+    // failing state-data validation (the bar is cosmetic, must never break load).
+    portal_user_uuids: z.optional(z.record(z.string(), z.string())),
 });
 
 const custom_profile_field_types_schema = z.object({
@@ -609,6 +614,8 @@ export const realm_schema = z.object({
     server_min_deactivated_realm_deletion_days: z.nullable(z.number()),
     server_jitsi_server_url: z.nullable(z.string()),
     server_name_changes_disabled: z.boolean(),
+    // PORTAL EDENU: Flag to gate production-only UI elements
+    server_portal_edenu: z.boolean(),
     server_needs_upgrade: z.boolean(),
     server_presence_offline_threshold_seconds: z.number(),
     server_presence_ping_interval_seconds: z.number(),

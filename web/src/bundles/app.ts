@@ -48,6 +48,8 @@ import "../../styles/reactions.css";
 import "../../styles/search.css";
 import "../../styles/user_circles.css";
 import "../../styles/left_sidebar.css";
+// PORTAL EDENU: tile-based left sidebar (beta).
+import "../../styles/portal_tiles_sidebar.css";
 import "../../styles/right_sidebar.css";
 import "../../styles/lightbox.css";
 import "../../styles/box_resize.css";

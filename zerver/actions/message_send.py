@@ -24,6 +24,11 @@ from zerver.actions.user_topics import (
 )
 from zerver.lib.addressee import Addressee
 from zerver.lib.alert_words import get_alert_word_automaton
+from zerver.lib.blocks import (
+    get_portal_event_hidden_user_ids,
+    get_portal_mention_blocked_map,
+    strip_blocked_user_mentions,
+)
 from zerver.lib.exceptions import (
     DirectMessageInitiationError,
     DirectMessagePermissionError,
@@ -1099,6 +1104,28 @@ def do_send_messages(
         user_ids = send_request.active_user_ids | set(user_flags.keys())
         sender_id = send_request.message.sender_id
 
+        # PORTAL EDENU: blocked pairs — viewers hiding the sender (or, in a
+        # channel, the sender of the topic's first message) get no live event
+        # and no notification, so nothing ever renders, not even the muted
+        # placeholder with a reveal button.  The UserMessage row stays, so an
+        # unblock restores history on the next fetch.
+        hidden_recipient_ids = get_portal_event_hidden_user_ids(
+            send_request.message.sender,
+            send_request.muted_sender_user_ids,
+            recipient_id=(
+                send_request.message.recipient_id
+                if send_request.message.is_channel_message
+                else None
+            ),
+            topic_name=(
+                send_request.message.topic_name()
+                if send_request.message.is_channel_message
+                else None
+            ),
+        )
+        if hidden_recipient_ids:
+            user_ids -= hidden_recipient_ids
+
         # We make sure the sender is listed first in the `users` list;
         # this results in the sender receiving the message first if
         # there are thousands of recipients, decreasing perceived latency.
@@ -1261,6 +1288,50 @@ def do_send_messages(
             event["local_id"] = send_request.local_id
         if send_request.sender_queue_id is not None:
             event["sender_queue_id"] = send_request.sender_queue_id
+
+        # PORTAL EDENU: third-party messages mentioning a blocked member still
+        # reach viewers who block them, but the mention pill must not ride along,
+        # or the block leaks the member's existence and display name inside other
+        # people's messages.  Each such viewer gets the same event with a stripped
+        # content copy (grouped by blocked set — push payloads ride this dict too).
+        viewer_blocked_map = get_portal_mention_blocked_map(
+            send_request.rendering_result.mentions_user_ids, [u["id"] for u in users]
+        )
+        if viewer_blocked_map:
+            all_blocked_mentioned_ids = {
+                blocked_id for ids in viewer_blocked_map.values() for blocked_id in ids
+            }
+            id_to_name = dict(
+                UserProfile.objects.filter(id__in=all_blocked_mentioned_ids).values_list(
+                    "id", "full_name"
+                )
+            )
+            pill_groups: dict[frozenset[int], list[UserData]] = {}
+            for user_data in users:
+                blocked_mentioned = viewer_blocked_map.get(user_data["id"])
+                if blocked_mentioned:
+                    pill_groups.setdefault(frozenset(blocked_mentioned), []).append(user_data)
+            for blocked_mentioned_ids, pill_users in pill_groups.items():
+                send_event_on_commit(
+                    send_request.realm,
+                    {
+                        **event,
+                        "message_dict": {
+                            **wide_message_dict,
+                            "content": strip_blocked_user_mentions(
+                                wide_message_dict["content"],
+                                set(blocked_mentioned_ids),
+                                frozenset(
+                                    id_to_name[user_id].casefold()
+                                    for user_id in blocked_mentioned_ids
+                                ),
+                            ),
+                        },
+                    },
+                    pill_users,
+                )
+            pill_user_ids = set(viewer_blocked_map)
+            users = [u for u in users if u["id"] not in pill_user_ids]
         send_event_on_commit(send_request.realm, event, users)
 
         if send_request.links_for_embed:
@@ -1796,6 +1867,21 @@ def check_message(
         user_profiles = addressee.user_profiles()
 
         check_sender_can_access_recipients(realm, sender, user_profiles)
+
+        # PORTAL EDENU: user blocks — a blocked pair must not be able to DM each
+        # other at all; silent delivery into a muted void reads as success on the
+        # sender's side. Both directions are checked via the cached
+        # get_muting_users (the hourly reconcile keeps block mutes symmetric, but
+        # a mid-sync state must not leak). Admins are never part of a portal
+        # block pair (the backend rejects blocking the admin account).
+        if settings.PORTAL_EDENU and not sender.is_bot:
+            for user_profile in user_profiles:
+                if user_profile.is_bot or user_profile.id == sender.id:
+                    continue
+                if user_profile.id in get_muting_users(sender.id) or sender.id in get_muting_users(
+                    user_profile.id
+                ):
+                    raise JsonableError(_("You cannot send direct messages to this user."))
 
         recipients_for_user_creation_events = get_recipients_for_user_creation_events(
             realm, sender, user_profiles

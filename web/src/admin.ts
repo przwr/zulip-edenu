@@ -177,6 +177,8 @@ export function build_page(): void {
         realm_email_changes_disabled: realm.realm_email_changes_disabled,
         realm_avatar_changes_disabled: realm.realm_avatar_changes_disabled,
         server_avatar_changes_disabled: realm.server_avatar_changes_disabled,
+        // PORTAL EDENU: Pass flag to page_params for UI gating
+        server_portal_edenu: realm.server_portal_edenu,
         can_add_emojis: settings_data.user_can_add_custom_emoji(),
         can_create_new_bots: settings_bots.can_create_incoming_webhooks(),
         realm_message_content_edit_limit_minutes:

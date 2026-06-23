@@ -14,6 +14,11 @@ from django_cte import CTE, with_cte
 
 from analytics.lib.counts import COUNT_STATS
 from analytics.models import RealmCount
+from zerver.lib.blocks import (
+    get_portal_blocked_topic_rows,
+    get_portal_blocked_user_ids,
+    strip_blocked_user_mentions,
+)
 from zerver.lib.cache import generic_bulk_cached_fetch, to_dict_cache_key_id
 from zerver.lib.display_recipient import get_display_recipient_by_id
 from zerver.lib.exceptions import JsonableError, MissingAuthenticationError
@@ -321,11 +326,47 @@ def messages_for_ids(
 
     message_list: list[dict[str, Any]] = []
 
+    # PORTAL EDENU: poll/TODO votes (submessages) and reactions by
+    # blocked users must not ride along in third-party messages.
+    blocked_sender_ids = get_portal_blocked_user_ids(user_profile)
+    blocked_names: frozenset[str] = frozenset()
+    if blocked_sender_ids:
+        # why: raw markdown name-only tokens (@**Name**) resolve by full name
+        blocked_names = frozenset(
+            name.casefold()
+            for name in UserProfile.objects.filter(id__in=blocked_sender_ids).values_list(
+                "full_name", flat=True
+            )
+        )
+
     sender_ids = [message_dicts[message_id]["sender_id"] for message_id in message_ids]
     inaccessible_sender_ids = get_inaccessible_user_ids(sender_ids, user_profile)
 
     for message_id in message_ids:
         msg_dict = message_dicts[message_id]
+        if blocked_sender_ids:
+            submessages = msg_dict.get("submessages")
+            if submessages:
+                msg_dict["submessages"] = [
+                    sm for sm in submessages if sm["sender_id"] not in blocked_sender_ids
+                ]
+            reactions = msg_dict.get("reactions")
+            if reactions:
+                msg_dict["reactions"] = [
+                    r
+                    for r in reactions
+                    # why: cached dicts carry the wire key, fresh rows the DB key
+                    if r.get("user_profile_id", r.get("user_id")) not in blocked_sender_ids
+                ]
+            # why: a mention in third-party content would leak the blocked member's
+            # name — both the raw markdown and the rendered pill (finalize_payload
+            # swaps rendered_content in as content only after this loop)
+            msg_dict["content"] = strip_blocked_user_mentions(
+                msg_dict["content"], blocked_sender_ids, blocked_names
+            )
+            msg_dict["rendered_content"] = strip_blocked_user_mentions(
+                msg_dict["rendered_content"], blocked_sender_ids
+            )
         flags = user_message_flags[message_id]
         # TODO/compatibility: The `wildcard_mentioned` flag was deprecated in favor of
         # the `stream_wildcard_mentioned` and `topic_wildcard_mentioned` flags.  The
@@ -886,6 +927,11 @@ def get_raw_unread_data(
         .exclude(
             message__recipient_id__in=excluded_recipient_ids,
         )
+        # PORTAL EDENU: blocked pairs — their messages never count as unread
+        # for the viewer; topics started by either side are excluded below.
+        .exclude(
+            message__sender_id__in=get_portal_blocked_user_ids(user_profile),
+        )
         .annotate(
             recipient_id=F("message__recipient_id"),
             sender_id=F("message__sender_id"),
@@ -959,6 +1005,17 @@ def get_raw_unread_data(
             rows = list(user_msgs)
         finally:
             cursor.execute("SET enable_bitmapscan TO on")
+        # PORTAL EDENU: topics started by a blocked user are invisible to the
+        # viewer, so third-party replies in them must not count as unread.
+        blocked_ids = get_portal_blocked_user_ids(user_profile)
+        if blocked_ids:
+            blocked_topics = get_portal_blocked_topic_rows(user_profile, blocked_ids)
+            if blocked_topics:
+                rows = [
+                    row
+                    for row in rows
+                    if (row["recipient_id"], row["topic"].upper()) not in blocked_topics
+                ]
         return extract_unread_data_from_um_rows(rows, user_profile)
 
 

@@ -370,6 +370,10 @@ DATABASES: dict[str, dict[str, Any]] = {
     }
 }
 
+# PORTAL EDENU: health-check pooled DB connections before reuse; prevents
+# "server closed the connection unexpectedly" in long-lived queue workers.
+DATABASES["default"]["CONN_HEALTH_CHECKS"] = True
+
 if DEVELOPMENT:
     LOCAL_DATABASE_PASSWORD = get_secret("local_database_password")
     DATABASES["default"].update(

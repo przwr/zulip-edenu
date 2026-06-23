@@ -1,6 +1,15 @@
 from collections.abc import Callable
 from typing import Any
 
+# PORTAL EDENU: Custom profile fields hidden from non-owner users in the API.
+# Portal UUID is deliberately NOT in this set: it is a public identifier by
+# design — it appears in the public mapa.edenu.pl/otwarta-ksiega/<uuid> URLs and
+# in the register-state portal_user_uuids that feeds every user's reputation
+# bar, so hiding it in profile surfaces was dead code (pentest M6).
+PORTAL_EDENU_HIDDEN_PROFILE_FIELD_NAMES: frozenset[str] = frozenset(
+    {"Profilowe", "Data urodzenia", "Drugie imię"}
+)
+
 import orjson
 from django.core.exceptions import ValidationError
 from django.db import models

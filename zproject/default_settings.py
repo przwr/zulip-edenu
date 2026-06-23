@@ -252,6 +252,11 @@ INLINE_URL_EMBED_PREVIEW = True
 NAME_CHANGES_DISABLED = False
 AVATAR_CHANGES_DISABLED = False
 PASSWORD_MIN_LENGTH = 8
+
+# PORTAL EDENU: Production-only customizations flag
+# When True, enables Portal Edenu-specific restrictions (privacy settings blocking,
+# self-deactivation blocking, API key blocking). Must be False in tests.
+PORTAL_EDENU = False
 PASSWORD_MAX_LENGTH = 100
 PASSWORD_MIN_GUESSES = 10000
 

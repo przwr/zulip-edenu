@@ -930,6 +930,22 @@ export function set_up(): void {
         user_avatar_widget_created = true;
     }
 
+    // PORTAL EDENU: Hide Gravatar link, privacy, API key, and deactivate account
+    // sections in production environment only (realm owners keep API key access
+    // so the sender account's key stays retrievable)
+    if (realm.server_portal_edenu) {
+        $("#user-avatar-source").hide();
+        $("#privacy_settings_box").hide();
+        if (!current_user.is_owner) {
+            $("#api_key_button_box").hide();
+        }
+        $("#deactivate_account_container").hide();
+        // PORTAL EDENU: muted users are portal-managed blocks — the settings
+        // panel would only list rows the hourly reconcile owns and un-muting
+        // is rejected by the API gate.
+        $('li[data-section="muted-users"]').hide();
+    }
+
     render_user_timezone_dropdown_widget();
 
     $<HTMLInputElement>("#automatically_offer_update_time_zone").on("change", function (e) {

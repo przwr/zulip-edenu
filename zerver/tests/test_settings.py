@@ -841,3 +841,67 @@ class UserDraftSettingsTests(ZulipTestCase):
         aaron = self.example_user("aaron")
         self.assertFalse(aaron.enable_drafts_synchronization)
         self.assertEqual(Draft.objects.count() - initial_count, 0)
+
+
+class PortalEdenuUserSettingsTest(ZulipTestCase):
+    """PORTAL EDENU: Tests for production-only user restrictions."""
+
+    @override_settings(PORTAL_EDENU=True)
+    def test_portal_edenu_non_admin_cannot_regenerate_api_key(self) -> None:
+        """Non-admin users cannot regenerate API key when PORTAL_EDENU is enabled."""
+        user = self.example_user("hamlet")
+        self.assertFalse(user.is_realm_admin)
+        old_api_key = user.api_key
+        result = self.api_post(user, "/api/v1/users/me/api_key/regenerate")
+        self.assert_json_error(result, "Privacy settings are disabled in this organization.")
+        user = self.example_user("hamlet")
+        self.assertEqual(user.api_key, old_api_key)
+
+    @override_settings(PORTAL_EDENU=True)
+    def test_portal_edenu_admin_can_regenerate_api_key(self) -> None:
+        """Admin users can still regenerate API key when PORTAL_EDENU is enabled."""
+        user = self.example_user("desdemona")
+        self.assertTrue(user.is_realm_admin)
+        old_api_key = user.api_key
+        result = self.api_post(user, "/api/v1/users/me/api_key/regenerate")
+        new_api_key = self.assert_json_success(result)["api_key"]
+        self.assertNotEqual(new_api_key, old_api_key)
+
+    @override_settings(PORTAL_EDENU=True)
+    def test_portal_edenu_privacy_settings_blocked_for_non_admin(self) -> None:
+        """Non-admin users cannot change security-sensitive settings when PORTAL_EDENU is enabled."""
+        user = self.example_user("hamlet")
+        self.login_user(user)
+        # Verify the setting is initially True (default)
+        user = self.example_user("hamlet")
+        self.assertTrue(user.presence_enabled)
+        # Try to toggle a security-sensitive setting
+        result = self.client_patch(
+            "/json/settings", {"presence_enabled": orjson.dumps(False).decode()}
+        )
+        self.assert_json_success(result)
+        # Setting should NOT have been changed — it was silently dropped
+        user = self.example_user("hamlet")
+        self.assertTrue(user.presence_enabled)
+
+    @override_settings(PORTAL_EDENU=True)
+    def test_portal_edenu_privacy_settings_allowed_for_admin(self) -> None:
+        """Admin users can change security-sensitive settings when PORTAL_EDENU is enabled."""
+        user = self.example_user("desdemona")
+        self.assertTrue(user.is_realm_admin)
+        self.login_user(user)
+        result = self.client_patch(
+            "/json/settings", {"presence_enabled": orjson.dumps(False).decode()}
+        )
+        self.assert_json_success(result)
+        user = self.example_user("desdemona")
+        self.assertFalse(user.presence_enabled)
+
+    @override_settings(PORTAL_EDENU=False)
+    def test_portal_edenu_disabled_api_key_works(self) -> None:
+        """API key regeneration works normally when PORTAL_EDENU is disabled."""
+        user = self.example_user("hamlet")
+        old_api_key = user.api_key
+        result = self.api_post(user, "/api/v1/users/me/api_key/regenerate")
+        new_api_key = self.assert_json_success(result)["api_key"]
+        self.assertNotEqual(new_api_key, old_api_key)

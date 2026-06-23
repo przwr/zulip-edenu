@@ -25,13 +25,19 @@ from zerver.lib.types import ProfileDataElementUpdateDict, ProfileFieldData
 from zerver.lib.users import validate_user_custom_profile_data
 from zerver.lib.validator import check_capped_string, validate_select_field_data
 from zerver.models import CustomProfileField, Realm, UserProfile
-from zerver.models.custom_profile_fields import custom_profile_fields_for_realm
+from zerver.models.custom_profile_fields import (
+    PORTAL_EDENU_HIDDEN_PROFILE_FIELD_NAMES,
+    custom_profile_fields_for_realm,
+)
 
 
 def list_realm_custom_profile_fields(
     request: HttpRequest, user_profile: UserProfile
 ) -> HttpResponse:
-    fields = custom_profile_fields_for_realm(user_profile.realm_id)
+    fields = list(custom_profile_fields_for_realm(user_profile.realm_id))
+    # PORTAL EDENU: Hide internal fields from non-owners
+    if not user_profile.is_realm_owner:
+        fields = [f for f in fields if f.name not in PORTAL_EDENU_HIDDEN_PROFILE_FIELD_NAMES]
     return json_success(request, data={"custom_fields": [f.as_dict() for f in fields]})
 
 

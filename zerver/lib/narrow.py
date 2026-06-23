@@ -34,6 +34,7 @@ from sqlalchemy.types import ARRAY, Boolean, Integer, Text
 from typing_extensions import override
 
 from zerver.lib.addressee import get_user_profiles, get_user_profiles_by_ids
+from zerver.lib.blocks import get_portal_narrow_conditions
 from zerver.lib.exceptions import ErrorCode, JsonableError, MissingAuthenticationError
 from zerver.lib.message import (
     access_message,
@@ -978,6 +979,7 @@ def get_base_query_for_search(
             .select_from(table("zerver_message"))
             .where(column("realm_id", Integer) == literal(realm_id))
         )
+        query = query.where(*get_portal_narrow_conditions(user_profile))
 
         inner_msg_id_col = literal_column("zerver_message.id", Integer)
         return (query, inner_msg_id_col)
@@ -1057,6 +1059,7 @@ def get_base_query_for_search(
     )
 
     inner_msg_id_col = column("message_id", Integer)
+    query = query.where(*get_portal_narrow_conditions(user_profile))
     return (query, inner_msg_id_col)
 
 

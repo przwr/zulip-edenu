@@ -9,9 +9,10 @@ from unittest import mock, skipUnless
 
 import orjson
 from django.conf import settings
+from django.contrib.auth import HASH_SESSION_KEY
 from django.contrib.auth.models import AnonymousUser
 from django.http import HttpRequest, HttpResponse
-from django.test import RequestFactory
+from django.test import RequestFactory, override_settings
 from django.utils.timezone import now as timezone_now
 from typing_extensions import override
 
@@ -744,6 +745,32 @@ class FetchAPIKeyTest(ZulipTestCase):
         self.login("cordelia")
         result = self.client_post("/json/fetch_api_key", dict(password="wrong_password"))
         self.assert_json_error_contains(result, "Password is incorrect")
+
+    # PORTAL EDENU: pentest M5 — only users who cannot re-auth (no usable
+    # password) skip the password check; admins with a local password must
+    # still re-authenticate before receiving the long-lived API key.
+    @override_settings(PORTAL_EDENU=True)
+    def test_fetch_api_key_portal_edenu_admin_with_password(self) -> None:
+        user = self.example_user("desdemona")
+        self.assertTrue(user.is_realm_admin)
+        self.assertTrue(user.has_usable_password())
+        self.login_user(user)
+        result = self.client_post("/json/fetch_api_key", dict(password=""))
+        self.assert_json_error(result, "Password is incorrect.", 400)
+
+    @override_settings(PORTAL_EDENU=True)
+    def test_fetch_api_key_portal_edenu_passwordless_bypass(self) -> None:
+        user = self.example_user("cordelia")
+        self.login_user(user)
+        user.set_unusable_password()
+        user.save()
+        # Refresh the session hash: Django ties the session to the password
+        # hash, and the flip above would otherwise log the session out mid-test.
+        session = self.client.session
+        session[HASH_SESSION_KEY] = user.get_session_auth_hash()
+        session.save()
+        result = self.client_post("/json/fetch_api_key", dict(password=""))
+        self.assert_json_success(result)
 
 
 class InactiveUserTest(ZulipTestCase):

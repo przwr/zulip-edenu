@@ -35,6 +35,7 @@ import * as people from "./people.ts";
 import * as popovers from "./popovers.ts";
 import * as reactions from "./reactions.ts";
 import * as rendered_markdown from "./rendered_markdown.ts";
+import * as reputation_bar from "./reputation_bar.ts";
 import * as resolved_topic from "./resolved_topic.ts";
 import * as rows from "./rows.ts";
 import * as sidebar_ui from "./sidebar_ui.ts";
@@ -1080,6 +1081,20 @@ export class MessageListView {
         rendered_markdown.update_elements($content);
 
         const id = rows.id($row);
+
+        // PORTAL EDENU: render the reputation bar immediately after the
+        // sender name (before edit/move notices), on the first message of a
+        // sender group (where the name shows).
+        if ($row.hasClass("messagebox-includes-sender")) {
+            const sender_id = Number.parseInt($row.attr("data-sender-id") ?? "", 10);
+            if (Number.isInteger(sender_id)) {
+                const bar = reputation_bar.render_reputation_bar(sender_id);
+                if (bar !== null) {
+                    $row.find(".sender_name").first().after($(bar));
+                }
+            }
+        }
+
         message_edit.maybe_show_edit($row, id);
 
         submessage.render_submessage({
