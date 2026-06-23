@@ -329,7 +329,10 @@ function get_user_card_popover_data(
     const spectator_view = page_params.is_spectator;
     const show_manage_section = !spectator_view && !is_me;
     const is_muted = muted_users.is_user_muted(user.user_id);
-    const muting_allowed = !is_me;
+    // PORTAL EDENU: muting is owned by the portal's block feature in prod;
+    // the hourly sync reconciles the whole MutedUser table, so client mutes
+    // (and their un-mutes) would be silently reverted.
+    const muting_allowed = !is_me && !realm.server_portal_edenu;
     const can_mute = muting_allowed && !is_muted;
     const can_unmute = muting_allowed && is_muted;
     const can_manage_user = current_user.is_admin && !is_me && !is_system_bot;

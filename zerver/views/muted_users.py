@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import IntegrityError
 from django.http import HttpRequest, HttpResponse
 from django.utils.timezone import now as timezone_now
@@ -12,6 +13,12 @@ from zerver.models import UserProfile
 
 
 def mute_user(request: HttpRequest, user_profile: UserProfile, muted_user_id: int) -> HttpResponse:
+    # PORTAL EDENU: the portal's user-block feature owns muting — the hourly
+    # reputation sync reconciles the whole MutedUser table and would delete a
+    # mute made here on its next run. Reject instead of silently losing it.
+    if settings.PORTAL_EDENU:
+        raise JsonableError(_("Muting is managed by Portal Edenu"))
+
     if user_profile.id == muted_user_id:
         raise JsonableError(_("Cannot mute self"))
 
@@ -39,6 +46,11 @@ def mute_user(request: HttpRequest, user_profile: UserProfile, muted_user_id: in
 def unmute_user(
     request: HttpRequest, user_profile: UserProfile, muted_user_id: int
 ) -> HttpResponse:
+    # PORTAL EDENU: symmetric counterpart to the mute gate above — blocks are
+    # managed (and unblocked) from the portal, not from Zulip clients.
+    if settings.PORTAL_EDENU:
+        raise JsonableError(_("Muting is managed by Portal Edenu"))
+
     muted_user = access_user_by_id_including_cross_realm(
         user_profile, muted_user_id, allow_bots=True, allow_deactivated=True, for_admin=False
     )

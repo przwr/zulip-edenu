@@ -12,6 +12,9 @@ FILES_WITH_LEGACY_SUBJECT = {
     # This basically requires a big DB migration:
     "zerver/lib/topic.py",
     "zerver/lib/topic_sqlalchemy.py",
+    # PORTAL EDENU: fork-owned block visibility helpers; raw SQL must name
+    # the legacy DB column.
+    "zerver/lib/blocks.py",
     # This is tied to legacy events.
     "zerver/lib/event_types.py",
     # This is for backward compatibility.

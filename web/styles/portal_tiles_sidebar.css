@@ -1,0 +1,148 @@
+/* PORTAL EDENU: card-style left sidebar. The default-and-only left sidebar
+   style for Portal Edenu. When <body> has class `portal-cards-active` (added
+   by portal_tiles_sidebar.ts on page init), the existing sidebar sections are
+   restyled as rounded card panels, single column. Excluded for spectators and
+   guests, who see the standard sidebar. */
+
+/* Card fill: a faint wash of the folder accent over the solid sidebar
+   background (NOT transparent) — the opaque base stops scrolling folder
+   content from bleeding through the DM/Views cards. Visually identical to a
+   transparent tint when the card sits over the sidebar. */
+
+/* ---- Channel folder cards ---- */
+body.portal-cards-active .stream-list-section-container {
+    position: relative;
+    z-index: 1;
+    background: color-mix(
+        in srgb,
+        var(--folder-accent, var(--color-border-sidebar)) 10%,
+        var(--color-background)
+    );
+    border: 1px solid
+        color-mix(
+            in srgb,
+            var(--folder-accent, var(--color-border-sidebar)) 35%,
+            transparent
+        );
+    border-left: 4px solid var(--folder-accent, var(--color-border-sidebar));
+    border-radius: 10px;
+    padding: 2px;
+    margin: 6px 16px 6px 4px;
+}
+
+/* PORTAL EDENU: the folder title row is position: sticky in stock Zulip
+   (sticks below the DM header). In the card layout each folder is a
+   self-contained card, so the title should scroll with it — override to
+   static. The opaque accent tint (same as the card fill) + stock z-index:2
+   keep scrolling channels from bleeding through when scrolling within a
+   folder that has an open topic list. */
+body.portal-cards-active .stream-list-subsection-header {
+    position: static;
+    background-color: color-mix(
+        in srgb,
+        var(--folder-accent, var(--color-border-sidebar)) 10%,
+        var(--color-background)
+    );
+}
+
+/* PORTAL EDENU: the folder/Views/DM header icon. Either a 16px <img> (scaled-
+   down portal artwork) or a Zulip icon-font <i> glyph; both sized to match the
+   heading text. The image keeps its color (it's real artwork); the glyph takes
+   the accent color. */
+body.portal-cards-active .portal-folder-icon {
+    width: 1.1em;
+    height: 1.1em;
+    flex-shrink: 0;
+    margin-right: 0.3em;
+    vertical-align: middle;
+}
+
+body.portal-cards-active .portal-folder-icon-img {
+    object-fit: contain;
+    border-radius: 3px;
+}
+
+body.portal-cards-active
+    .stream-list-section-container
+    .portal-folder-icon:not(.portal-folder-icon-img),
+body.portal-cards-active #left-sidebar-navigation-area .portal-folder-icon,
+body.portal-cards-active #direct-messages-section-header .portal-folder-icon {
+    color: var(--folder-accent);
+    font-size: 1em;
+}
+
+/* ---- Views block card ---- */
+body.portal-cards-active #left-sidebar-navigation-area {
+    background: color-mix(
+        in srgb,
+        var(--folder-accent, var(--color-border-sidebar)) 10%,
+        var(--color-background)
+    );
+    border: 1px solid
+        color-mix(
+            in srgb,
+            var(--folder-accent, var(--color-border-sidebar)) 35%,
+            transparent
+        );
+    border-left: 4px solid var(--folder-accent, var(--color-border-sidebar));
+    border-radius: 10px;
+    padding: 4px;
+    margin: 6px 16px 6px 4px;
+}
+
+/* ---- Direct Messages block card ----
+   The header and the list are siblings; style them as one continuous card
+   (header = top border+rounding, list = bottom border+rounding). */
+body.portal-cards-active #direct-messages-section-header {
+    position: relative;
+    z-index: 1;
+    background: color-mix(
+        in srgb,
+        var(--folder-accent, var(--color-border-sidebar)) 10%,
+        var(--color-background)
+    );
+    border: 1px solid
+        color-mix(
+            in srgb,
+            var(--folder-accent, var(--color-border-sidebar)) 35%,
+            transparent
+        );
+    border-left: 4px solid var(--folder-accent, var(--color-border-sidebar));
+    border-bottom: none;
+    border-radius: 10px 10px 0 0;
+    margin: 6px 16px 0 4px;
+}
+
+body.portal-cards-active #direct-messages-list {
+    position: relative;
+    z-index: 1;
+    background: color-mix(
+        in srgb,
+        var(--folder-accent, var(--color-border-sidebar)) 10%,
+        var(--color-background)
+    );
+    border: 1px solid
+        color-mix(
+            in srgb,
+            var(--folder-accent, var(--color-border-sidebar)) 35%,
+            transparent
+        );
+    border-left: 4px solid var(--folder-accent, var(--color-border-sidebar));
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    margin: 0 16px 0 4px;
+}
+
+/* PORTAL EDENU: hide the stock DM/folders divider — in the card layout the
+   DM card's own rounded bottom border + margin gap replaces it, and its
+   sticky behavior makes it float over scrolling folder cards. */
+body.portal-cards-active .direct-message-section-bottom-divider-container {
+    display: none;
+}
+
+body.portal-cards-active #views-label-container,
+body.portal-cards-active #left-sidebar-navigation-list,
+body.portal-cards-active #stream_filters,
+body.portal-cards-active .direct-messages-container {
+    margin-right: 0;
+}

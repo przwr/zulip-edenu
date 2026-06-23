@@ -1,6 +1,7 @@
 from django.utils.translation import gettext as _
 
 from zerver.actions.user_topics import do_set_user_topic_visibility_policy
+from zerver.lib.blocks import get_portal_event_hidden_user_ids
 from zerver.lib.exceptions import JsonableError
 from zerver.lib.message import (
     event_recipient_ids_for_action_on_messages,
@@ -93,6 +94,14 @@ def do_add_submessage(
     )
     target_user_ids = event_recipient_ids_for_action_on_messages(
         [submessage.message.id], submessage.message.is_channel_message
+    )
+    # PORTAL EDENU: votes by blocked users must not surface as live
+    # events to viewers who can't see them (or in hidden topics).
+    target_user_ids -= get_portal_event_hidden_user_ids(
+        sender,
+        set(),
+        recipient_id=submessage.message.recipient_id,
+        topic_name=submessage.message.topic_name(),
     )
 
     send_event_on_commit(realm, event, target_user_ids)

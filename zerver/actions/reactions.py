@@ -3,6 +3,7 @@ from typing import Literal
 from typing_extensions import TypedDict
 
 from zerver.actions.user_topics import do_set_user_topic_visibility_policy
+from zerver.lib.blocks import get_portal_event_hidden_user_ids
 from zerver.lib.emoji import check_emoji_request, get_emoji_data
 from zerver.lib.exceptions import ReactionExistsError
 from zerver.lib.message import (
@@ -49,6 +50,14 @@ def notify_reaction_update(
     update_message_cache([message])
 
     user_ids = event_recipient_ids_for_action_on_messages([message.id], message.is_channel_message)
+    # PORTAL EDENU: no reaction events from blocked users (or in topics
+    # they started) to viewers who can't see that content.
+    user_ids -= get_portal_event_hidden_user_ids(
+        user_profile,
+        set(),
+        recipient_id=message.recipient_id,
+        topic_name=message.topic_name(),
+    )
     send_event_on_commit(user_profile.realm, event, list(user_ids))
 
 

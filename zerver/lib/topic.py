@@ -9,6 +9,7 @@ from django.db.models.functions import Cast
 from django.utils.translation import gettext as _
 from django.utils.translation import override as override_language
 
+from zerver.lib.blocks import get_portal_blocked_user_ids
 from zerver.lib.types import EditHistoryEvent, StreamMessageEditRequest
 from zerver.lib.utils import assert_is_not_none
 from zerver.models import Message, Reaction, UserMessage, UserProfile
@@ -259,6 +260,8 @@ def get_topic_history_for_public_stream(
     realm_id: int,
     recipient_id: int,
     allow_empty_topic_name: bool,
+    *,
+    blocked_first_sender_ids: set[int] | None = None,
 ) -> list[dict[str, Any]]:
     cursor = connection.cursor()
     # Uses index: zerver_message_realm_recipient_subject
@@ -267,7 +270,8 @@ def get_topic_history_for_public_stream(
     query = """
     SELECT
         "zerver_message"."subject" as topic,
-        max("zerver_message".id) as max_message_id
+        max("zerver_message".id) as max_message_id,
+        min("zerver_message".id) as first_message_id
     FROM "zerver_message"
     WHERE (
         "zerver_message"."realm_id" = %s AND
@@ -283,7 +287,23 @@ def get_topic_history_for_public_stream(
     rows = cursor.fetchall()
     cursor.close()
 
-    return generate_topic_history_from_db_rows(rows, allow_empty_topic_name)
+    rows = _drop_topics_started_by_blocked_users(rows, blocked_first_sender_ids)
+    return generate_topic_history_from_db_rows([row[:2] for row in rows], allow_empty_topic_name)
+
+
+def _drop_topics_started_by_blocked_users(
+    rows: list[tuple[Any, ...]], blocked_first_sender_ids: set[int] | None
+) -> list[tuple[Any, ...]]:
+    """PORTAL EDENU: drop topics whose first message came from a blocked user.
+
+    `rows` are (topic, max_message_id, first_message_id, ...) tuples; the
+    first_message_id column is only fetched when filtering is active.
+    """
+    if not blocked_first_sender_ids:
+        return rows
+    first_ids = [row[2] for row in rows]
+    sender_by_id = dict(Message.objects.filter(id__in=first_ids).values_list("id", "sender_id"))
+    return [row for row in rows if sender_by_id.get(row[2]) not in blocked_first_sender_ids]
 
 
 def get_topic_history_for_stream(
@@ -292,11 +312,15 @@ def get_topic_history_for_stream(
     public_history: bool,
     allow_empty_topic_name: bool,
 ) -> list[dict[str, Any]]:
+    # PORTAL EDENU: topics started by someone the viewer blocks (either
+    # direction) never appear in their topic list.
+    blocked_first_sender_ids = get_portal_blocked_user_ids(user_profile) or None
     if public_history:
         return get_topic_history_for_public_stream(
             user_profile.realm_id,
             recipient_id,
             allow_empty_topic_name,
+            blocked_first_sender_ids=blocked_first_sender_ids,
         )
 
     cursor = connection.cursor()
@@ -306,7 +330,8 @@ def get_topic_history_for_stream(
     query = """
     SELECT
         "zerver_message"."subject" as topic,
-        max("zerver_message".id) as max_message_id
+        max("zerver_message".id) as max_message_id,
+        min("zerver_message".id) as first_message_id
     FROM "zerver_message"
     INNER JOIN "zerver_usermessage" ON (
         "zerver_usermessage"."message_id" = "zerver_message"."id"
@@ -326,7 +351,8 @@ def get_topic_history_for_stream(
     rows = cursor.fetchall()
     cursor.close()
 
-    return generate_topic_history_from_db_rows(rows, allow_empty_topic_name)
+    rows = _drop_topics_started_by_blocked_users(rows, blocked_first_sender_ids)
+    return generate_topic_history_from_db_rows([row[:2] for row in rows], allow_empty_topic_name)
 
 
 def get_topic_resolution_and_bare_name(stored_name: str) -> tuple[bool, str]:
