@@ -22,6 +22,8 @@ import {page_params} from "./page_params.ts";
 import * as pm_list from "./pm_list.ts";
 import * as popover_menus from "./popover_menus.ts";
 import * as popovers from "./popovers.ts";
+// PORTAL EDENU: card-style left sidebar.
+import * as portal_tiles_sidebar from "./portal_tiles_sidebar.ts";
 import * as resize from "./resize.ts";
 import * as scheduled_messages from "./scheduled_messages.ts";
 import * as scroll_util from "./scroll_util.ts";
@@ -356,6 +358,9 @@ export function initialize_left_sidebar(): void {
     stream_list.update_unread_counts_visibility();
     initialize_left_sidebar_cursor();
     set_event_handlers();
+    // PORTAL EDENU: activate the card-style left sidebar + folder icons
+    // (CSS-only, no DOM structure change).
+    portal_tiles_sidebar.activate();
 }
 
 export function focus_topic_search_filter(): void {

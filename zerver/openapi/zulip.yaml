@@ -21558,6 +21558,13 @@ paths:
                           Whether the server allows name changes. Similar to
                           `realm_name_changes_disabled` but based on the `NAME_CHANGES_DISABLED`
                           Zulip server level setting.
+                      # PORTAL EDENU: Flag to gate production-only UI elements
+                      server_portal_edenu:
+                        type: boolean
+                        description: |
+                          Present if `realm` is present in `fetch_event_types`.
+
+                          Whether the server has Portal Edenu customizations enabled.
                       server_needs_upgrade:
                         type: boolean
                         description: |
@@ -22448,6 +22455,18 @@ paths:
                           Present if `realm_user` is present in `fetch_event_types`.
 
                           The full name of the current user.
+                      portal_user_uuids:
+                        type: object
+                        additionalProperties:
+                          type: string
+                          description: |
+                            `{user_id}`: The Portal UUID of the user with this ID.
+                        description: |
+                          Present if `realm_user` is present in `fetch_event_types`.
+
+                          Maps each user ID (as a string) to their Portal UUID, used by
+                          the desktop reputation bar to link to the user's Otwarta Księga
+                          page. Portal Edenu customization.
                       cross_realm_bots:
                         type: array
                         description: |

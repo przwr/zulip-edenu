@@ -111,7 +111,11 @@ from zerver.models import (
     UserTopic,
 )
 from zerver.models.constants import MAX_TOPIC_NAME_LENGTH
-from zerver.models.custom_profile_fields import custom_profile_fields_for_realm
+from zerver.models.custom_profile_fields import (
+    PORTAL_EDENU_HIDDEN_PROFILE_FIELD_NAMES,
+    CustomProfileFieldValue,
+    custom_profile_fields_for_realm,
+)
 from zerver.models.linkifiers import linkifiers_for_realm
 from zerver.models.realm_emoji import get_all_custom_emoji_for_realm
 from zerver.models.realm_playgrounds import get_realm_playgrounds
@@ -284,6 +288,13 @@ def fetch_initial_state_data(
         else:
             fields = custom_profile_fields_for_realm(realm.id)
             state["custom_profile_fields"] = [f.as_dict() for f in fields]
+            # PORTAL EDENU: Hide internal fields from non-owners
+            if not user_profile.is_realm_owner:
+                state["custom_profile_fields"] = [
+                    f
+                    for f in state["custom_profile_fields"]
+                    if f["name"] not in PORTAL_EDENU_HIDDEN_PROFILE_FIELD_NAMES
+                ]
         state["custom_profile_field_types"] = {
             item[4]: {"id": item[0], "name": str(item[1])}
             for item in CustomProfileField.ALL_FIELD_TYPES
@@ -552,6 +563,8 @@ def fetch_initial_state_data(
         ]
         state["server_avatar_changes_disabled"] = settings.AVATAR_CHANGES_DISABLED
         state["server_name_changes_disabled"] = settings.NAME_CHANGES_DISABLED
+        # PORTAL EDENU: Pass portal_edenu flag to frontend for UI element gating
+        state["server_portal_edenu"] = settings.PORTAL_EDENU
         state["server_web_public_streams_enabled"] = settings.WEB_PUBLIC_STREAMS_ENABLED
         state["gif_rating_policy_options"] = realm.get_gif_rating_policy_options()
 
@@ -762,6 +775,20 @@ def fetch_initial_state_data(
         state["email"] = settings_user.email
         state["delivery_email"] = settings_user.delivery_email
         state["full_name"] = settings_user.full_name
+
+        # PORTAL EDENU: {user_id → portal UUID} so the desktop reputation bar can
+        # link to each user's Otwarta Księga page. Portal UUID is a hidden field
+        # (stripped from profile_data for non-owners), so fetch it via ORM.
+        # Gated on settings.PORTAL_EDENU: vanilla Zulip (and the test suite, where
+        # it defaults to False) pays no query here.
+        if settings.PORTAL_EDENU:
+            state["portal_user_uuids"] = {  # nocoverage
+                str(uid): value
+                for uid, value in CustomProfileFieldValue.objects.filter(
+                    field__name="Portal UUID", user_profile__realm=realm
+                ).values_list("user_profile_id", "value")
+                if value
+            }
 
     if want("realm_bot"):
         state["realm_bots"] = [] if user_profile is None else get_owned_bot_dicts(user_profile)
@@ -1175,6 +1202,13 @@ def apply_event(
         state["onboarding_steps"] = event["onboarding_steps"]
     elif event["type"] == "custom_profile_fields":
         state["custom_profile_fields"] = event["fields"]
+        # PORTAL EDENU: Hide internal fields from non-owners
+        if not user_profile.is_realm_owner:
+            state["custom_profile_fields"] = [
+                f
+                for f in state["custom_profile_fields"]
+                if f["name"] not in PORTAL_EDENU_HIDDEN_PROFILE_FIELD_NAMES
+            ]
         custom_profile_field_ids = {field["id"] for field in state["custom_profile_fields"]}
 
         if "raw_users" in state:
@@ -1294,18 +1328,23 @@ def apply_event(
 
                 if "custom_profile_field" in person:
                     custom_field_id = str(person["custom_profile_field"]["id"])
-                    custom_field_new_value = person["custom_profile_field"]["value"]
-                    if custom_field_new_value is None and "profile_data" in p:
-                        p["profile_data"].pop(custom_field_id, None)
-                    elif "rendered_value" in person["custom_profile_field"]:
-                        p["profile_data"][custom_field_id] = {
-                            "value": custom_field_new_value,
-                            "rendered_value": person["custom_profile_field"]["rendered_value"],
-                        }
-                    else:
-                        p["profile_data"][custom_field_id] = {
-                            "value": custom_field_new_value,
-                        }
+                    # PORTAL EDENU: Skip updates for hidden fields
+                    visible_field_ids = {
+                        str(f["id"]) for f in state.get("custom_profile_fields", [])
+                    }
+                    if custom_field_id in visible_field_ids:
+                        custom_field_new_value = person["custom_profile_field"]["value"]
+                        if custom_field_new_value is None and "profile_data" in p:
+                            p["profile_data"].pop(custom_field_id, None)
+                        elif "rendered_value" in person["custom_profile_field"]:
+                            p["profile_data"][custom_field_id] = {
+                                "value": custom_field_new_value,
+                                "rendered_value": person["custom_profile_field"]["rendered_value"],
+                            }
+                        else:
+                            p["profile_data"][custom_field_id] = {
+                                "value": custom_field_new_value,
+                            }
 
                 if "new_email" in person:
                     p["email"] = person["new_email"]

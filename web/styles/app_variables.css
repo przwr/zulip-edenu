@@ -2878,17 +2878,19 @@
     );
     /* Banners - Brand Variant */
     --color-text-brand-banner: light-dark(
-        hsl(264deg 95% 34%),
-        hsl(244deg 96% 82%)
+        hsl(45deg 85% 35%),
+        hsl(45deg 95% 75%)
     );
+    /* PORTAL-MOD: Changed brand banner colors to gold */
     --color-border-brand-banner: light-dark(
-        color-mix(in oklch, hsl(254deg 60% 50%) 40%, transparent),
-        color-mix(in oklch, hsl(253deg 70% 89%) 40%, transparent)
+        color-mix(in oklch, hsl(45deg 68% 53%) 40%, transparent),
+        color-mix(in oklch, hsl(45deg 80% 85%) 40%, transparent)
     );
     --color-background-brand-banner: light-dark(
-        hsl(254deg 42% 94%),
-        hsl(254deg 49% 16%)
+        hsl(45deg 50% 96%),
+        hsl(45deg 60% 20%)
     );
+    /* PORTAL-MOD: End of brand banner color change */
     /* Banners - Info Variant */
     --color-text-info-banner: light-dark(
         hsl(241deg 95% 25%),

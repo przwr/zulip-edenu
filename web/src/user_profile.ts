@@ -44,6 +44,7 @@ import * as modals from "./modals.ts";
 import * as peer_data from "./peer_data.ts";
 import * as people from "./people.ts";
 import type {User} from "./people.ts";
+import * as reputation_bar from "./reputation_bar.ts";
 import * as settings_components from "./settings_components.ts";
 import * as settings_config from "./settings_config.ts";
 import * as settings_data from "./settings_data.ts";
@@ -749,6 +750,20 @@ export function show_user_profile(user_id: number, default_tab_key = "profile-ta
     }
 
     $("#user-profile-modal-holder").html(render_user_profile_modal(args));
+
+    // PORTAL EDENU: render the reputation bar and "Pokaż na mapie" link under
+    // the user's full name.
+    const profile_bar = reputation_bar.render_reputation_bar(user_id);
+    const map_link = reputation_bar.render_map_link(user_id);
+    // Insert order: bar hugs the name, map link sits below. `.after()` chains
+    // down the DOM, so we insert the link first, then the bar goes above it.
+    if (map_link !== null) {
+        $("#user-profile-modal #name").after($(map_link));
+    }
+    if (profile_bar !== null) {
+        $("#user-profile-modal #name").after($(profile_bar));
+    }
+
     modals.open("user-profile-modal", {autoremove: true, on_hide: on_user_profile_hide});
     $(".tabcontent").hide();
     $("#user-profile-modal .dialog_submit_button").prop("disabled", true);

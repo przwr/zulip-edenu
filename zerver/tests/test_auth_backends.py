@@ -4575,6 +4575,139 @@ class SAMLAuthBackendTest(SocialAuthBase):
         self.assertEqual(external_auth_ids[0].external_auth_method_name, "saml:test_idp")
         self.assertEqual(external_auth_ids[0].external_auth_id, f"test_idp:{uid_value}")
 
+    @override_settings(TERMS_OF_SERVICE_VERSION=None)
+    def test_portal_edenu_saml_custom_profile_fields_on_registration(self) -> None:
+        """PORTAL EDENU: Test that custom profile fields from SAML IdP are synced
+        during first-time user registration via the session pipeline."""
+        email = "newuser@zulip.com"
+        name = "New User"
+        subdomain = "zulip"
+        realm = get_realm("zulip")
+
+        # Create custom profile fields that match what we sync from Authentik
+        avatar_field = CustomProfileField.objects.create(
+            realm=realm,
+            name="Profilowe",
+            field_type=CustomProfileField.SHORT_TEXT,
+        )
+        birthdate_field = CustomProfileField.objects.create(
+            realm=realm,
+            name="Data urodzenia",
+            field_type=CustomProfileField.DATE,
+        )
+        middlename_field = CustomProfileField.objects.create(
+            realm=realm,
+            name="Drugie imię",
+            field_type=CustomProfileField.SHORT_TEXT,
+        )
+
+        idps_config_dict = copy.deepcopy(settings.SOCIAL_AUTH_SAML_ENABLED_IDPS)
+        idps_config_dict["test_idp"]["extra_attrs"] = ["avatar", "birthdate", "middle_name"]
+
+        sync_attrs_dict = {
+            "zulip": {
+                "saml": {
+                    "custom__profilowe": "avatar",
+                    "custom__data_urodzenia": "birthdate",
+                    "custom__drugie_imię": "middle_name",
+                }
+            }
+        }
+
+        with self.settings(
+            SOCIAL_AUTH_SAML_ENABLED_IDPS=idps_config_dict,
+            SOCIAL_AUTH_SYNC_ATTRS_DICT=sync_attrs_dict,
+        ):
+            result = self.social_auth_test(
+                self.get_account_data_dict(email=email, name=name),
+                subdomain=subdomain,
+                is_signup=True,
+                extra_attributes=dict(
+                    avatar=["user_avatar.png"],
+                    birthdate=["2000-05-15"],
+                    middle_name=["Jan"],
+                ),
+            )
+            self.stage_two_of_registration(
+                result,
+                realm,
+                subdomain,
+                email,
+                name,
+                name,
+                self.BACKEND_CLASS.full_name_validated,
+            )
+
+        user_profile = get_user_by_delivery_email(email, realm)
+        self.assertTrue(user_profile.is_active)
+
+        # Verify custom profile fields were synced during registration
+        avatar_value = CustomProfileFieldValue.objects.get(
+            user_profile=user_profile, field=avatar_field
+        ).value
+        self.assertEqual(avatar_value, "user_avatar.png")
+
+        birthdate_value = CustomProfileFieldValue.objects.get(
+            user_profile=user_profile, field=birthdate_field
+        ).value
+        self.assertEqual(birthdate_value, "2000-05-15")
+
+        middlename_value = CustomProfileFieldValue.objects.get(
+            user_profile=user_profile, field=middlename_field
+        ).value
+        self.assertEqual(middlename_value, "Jan")
+
+    @override_settings(TERMS_OF_SERVICE_VERSION=None)
+    def test_portal_edenu_saml_custom_profile_fields_sync_failure(self) -> None:
+        """PORTAL EDENU: Test that custom profile field sync failure during
+        registration is handled gracefully."""
+        email = "syncfail@zulip.com"
+        name = "Sync Fail"
+        subdomain = "zulip"
+        realm = get_realm("zulip")
+
+        idps_config_dict = copy.deepcopy(settings.SOCIAL_AUTH_SAML_ENABLED_IDPS)
+        idps_config_dict["test_idp"]["extra_attrs"] = ["avatar"]
+
+        # Configure sync for a field that doesn't exist in the realm
+        sync_attrs_dict = {
+            "zulip": {
+                "saml": {
+                    "custom__nonexistent_field": "avatar",
+                }
+            }
+        }
+
+        with (
+            self.settings(
+                SOCIAL_AUTH_SAML_ENABLED_IDPS=idps_config_dict,
+                SOCIAL_AUTH_SYNC_ATTRS_DICT=sync_attrs_dict,
+            ),
+            self.assertLogs("zulip.registration", level="WARNING") as m,
+        ):
+            result = self.social_auth_test(
+                self.get_account_data_dict(email=email, name=name),
+                subdomain=subdomain,
+                is_signup=True,
+                extra_attributes=dict(avatar=["avatar.png"]),
+            )
+            self.stage_two_of_registration(
+                result,
+                realm,
+                subdomain,
+                email,
+                name,
+                name,
+                self.BACKEND_CLASS.full_name_validated,
+            )
+
+        # User should still be created successfully despite field sync failure
+        user_profile = get_user_by_delivery_email(email, realm)
+        self.assertTrue(user_profile.is_active)
+
+        # Verify the warning was logged
+        self.assertTrue(any("Failed to sync custom profile fields" in msg for msg in m.output))
+
 
 class AppleAuthMixin:
     CLIENT_KEY_SETTING = "SOCIAL_AUTH_APPLE_KEY"

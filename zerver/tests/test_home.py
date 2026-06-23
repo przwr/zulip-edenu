@@ -257,6 +257,7 @@ class HomeTest(ZulipTestCase):
         "server_min_deactivated_realm_deletion_days",
         "server_jitsi_server_url",
         "server_name_changes_disabled",
+        "server_portal_edenu",  # PORTAL EDENU
         "server_needs_upgrade",
         "server_presence_offline_threshold_seconds",
         "server_presence_ping_interval_seconds",

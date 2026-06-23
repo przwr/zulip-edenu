@@ -22,6 +22,7 @@ import * as padded_widget from "./padded_widget.ts";
 import {page_params} from "./page_params.ts";
 import * as peer_data from "./peer_data.ts";
 import * as people from "./people.ts";
+import * as reputation_bar from "./reputation_bar.ts";
 import * as scroll_util from "./scroll_util.ts";
 import * as settings_config from "./settings_config.ts";
 import {disconnect_toggle_class, observe_toggle_class} from "./sidebar_tooltip_helpers.ts";
@@ -743,6 +744,9 @@ export class BuddyList extends BuddyListConf {
 
         this.render_count += more_user_ids.length;
         this.update_padding();
+
+        // PORTAL EDENU: render reputation bars into the freshly added rows.
+        reputation_bar.inject_into_buddy_list($("#buddy_list_wrapper"));
     }
 
     display_or_hide_sections(): void {
@@ -1090,6 +1094,9 @@ export class BuddyList extends BuddyListConf {
 
         this.render_count += 1;
         this.update_padding();
+
+        // PORTAL EDENU: reputation bar for the just-inserted row.
+        reputation_bar.inject_into_buddy_list($("#buddy_list_wrapper"));
     }
 
     insert_or_move(user_ids: number[]): void {

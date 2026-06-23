@@ -23,6 +23,7 @@ from zerver.lib.cache import (
 from zerver.lib.exceptions import JsonableError
 from zerver.lib.mention import silent_mention_syntax_for_user, silent_mention_syntax_for_user_group
 from zerver.lib.message import get_last_message_id
+from zerver.lib.portal_colors import folder_color as portal_folder_color
 from zerver.lib.queue import queue_event_on_commit
 from zerver.lib.stream_color import pick_colors
 from zerver.lib.stream_subscription import (
@@ -823,6 +824,11 @@ def bulk_add_subscriptions(
         for recipient_id in new_recipient_ids:
             stream = recipient_id_to_stream[recipient_id]
             color = user_color_map[recipient_id]
+            # PORTAL EDENU: override with the folder accent color so every
+            # user's channel swatch matches the folder's card color. Streams
+            # with no folder keep Zulip's random pick.
+            if stream.folder_id is not None and stream.folder is not None:
+                color = portal_folder_color(stream.folder.name, stream.folder_id)
 
             sub = Subscription(
                 user_profile=user_profile,

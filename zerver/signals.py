@@ -1,3 +1,4 @@
+import logging
 import zoneinfo
 from email.utils import format_datetime as email_format_datetime
 from typing import Any
@@ -16,6 +17,7 @@ from zerver.lib.send_email import FromAddress
 from zerver.lib.timestamp import format_datetime_to_string
 from zerver.lib.timezone import canonicalize_timezone
 from zerver.models import UserProfile
+from zerver.models.custom_profile_fields import CustomProfileFieldValue
 
 JUST_CREATED_THRESHOLD = 60
 
@@ -93,6 +95,59 @@ def email_on_new_login(sender: Any, user: UserProfile, request: Any, **kwargs: A
             "date": email_format_datetime(local_time),
         }
         queue_json_publish_rollback_unsafe("email_senders", email_dict)
+
+
+@receiver(user_logged_in, dispatch_uid="refresh_avatar_on_login")
+def refresh_avatar_on_login(sender: Any, **kwargs: Any) -> None:
+    # PORTAL EDENU: refresh this user's Authentik avatar + rank badge shortly
+    # after login, so a changed picture shows within seconds rather than the
+    # next hourly cron tick. Fire-and-forget daemon thread: the sync reads the
+    # Authentik media dir off disk and must not block the login response.
+    # Reuses the same sync_user_avatar() the cron uses.
+    # ponytail: unbounded threads under a login storm is the ceiling; fine at
+    # this org size — upgrade to queue_json_publish("email_senders"-style)
+    # worker if logins ever scale.
+    # Production-only: gated off in tests (PORTAL_EDENU defaults False) so the
+    # daemon thread never races with assert_database_query_count blocks.
+    if not settings.PORTAL_EDENU:
+        return
+    user = kwargs.get("user")
+    if user is None or getattr(user, "is_bot", False):
+        return  # nocoverage
+
+    from threading import Thread
+
+    from django.db import connection
+
+    def _sync() -> None:
+        try:
+            # Deferred import: signals.py loads at Django startup.
+            from zerver.management.commands.sync_avatars_from_authentik import (
+                get_admin_user,
+                get_ranks_for_users,
+                sync_user_avatar,
+            )
+
+            # No-op for users without a Profilowe avatar (service accounts, etc.)
+            # without raising DoesNotExist inside sync_user_avatar.
+            has_avatar = CustomProfileFieldValue.objects.filter(
+                field__name="Profilowe", user_profile=user
+            ).exclude(value="")
+            if not has_avatar.exists():
+                return
+
+            rank = get_ranks_for_users([user]).get(user.id, "Normal")  # nocoverage
+            sync_user_avatar(user, admin_user=get_admin_user(), rank=rank)  # nocoverage
+        except Exception:  # nocoverage
+            # Never break login: log and move on.
+            logging.getLogger("avatar_sync").exception(
+                "login-triggered avatar sync failed for %s", getattr(user, "delivery_email", "?")
+            )
+        finally:
+            # Threads own their DB connection; return it to the pool.
+            connection.close()
+
+    Thread(target=_sync, name="avatar-sync-on-login", daemon=True).start()
 
 
 @receiver(user_logged_out)

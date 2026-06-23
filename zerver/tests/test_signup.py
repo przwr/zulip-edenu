@@ -4055,3 +4055,48 @@ class RealmRedirectTest(ZulipTestCase):
         result = self.client_post("/accounts/go/?next=billing", {"subdomain": "lear"})
         self.assertEqual(result.status_code, 302)
         self.assertEqual(result["Location"], "http://lear.testserver/login/?next=billing")
+
+
+class PortalEdenuDeactivateUserTest(ZulipTestCase):
+    """PORTAL EDENU: Tests for self-deactivation restrictions."""
+
+    @override_settings(PORTAL_EDENU=True)
+    def test_portal_edenu_non_admin_cannot_self_deactivate(self) -> None:
+        """Non-admin users cannot self-deactivate when PORTAL_EDENU is enabled."""
+        user = self.example_user("hamlet")
+        self.login_user(user)
+        self.assertTrue(user.is_active)
+        result = self.client_delete("/json/users/me")
+        self.assert_json_error(
+            result,
+            "Self-deactivation is not allowed. Please contact an organization administrator.",
+        )
+        user = self.example_user("hamlet")
+        self.assertTrue(user.is_active)
+
+    @override_settings(PORTAL_EDENU=True)
+    def test_portal_edenu_admin_can_self_deactivate(self) -> None:
+        """Admin users can still self-deactivate when PORTAL_EDENU is enabled."""
+        user = self.example_user("desdemona")
+        user_2 = self.example_user("iago")
+        self.set_user_role(user_2, UserProfile.ROLE_REALM_OWNER)
+        self.login_user(user)
+        result = self.client_delete("/json/users/me")
+        self.assert_json_success(result)
+        user = self.example_user("desdemona")
+        self.assertFalse(user.is_active)
+        # Cleanup: restore desdemona for other tests
+        from zerver.actions.users import change_user_is_active
+
+        change_user_is_active(user, True)
+        self.set_user_role(user, UserProfile.ROLE_REALM_OWNER)
+
+    @override_settings(PORTAL_EDENU=False)
+    def test_portal_edenu_disabled_self_deactivate_works(self) -> None:
+        """Self-deactivation works normally when PORTAL_EDENU is disabled."""
+        user = self.example_user("hamlet")
+        self.login_user(user)
+        result = self.client_delete("/json/users/me")
+        self.assert_json_success(result)
+        user = self.example_user("hamlet")
+        self.assertFalse(user.is_active)

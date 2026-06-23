@@ -180,6 +180,8 @@ def maybe_send_to_registration(
     params_to_store_in_authenticated_session: dict[str, str] | None = None,
     redirect_to: str | None = None,
     role: int | None = None,
+    # PORTAL EDENU: Custom profile fields to sync during user creation
+    custom_profile_field_name_to_value: dict[str, Any] | None = None,
 ) -> HttpResponse:
     """Given a successful authentication for an email address (i.e. we've
     confirmed the user controls the email address) that does not
@@ -236,6 +238,14 @@ def maybe_send_to_registration(
                 orjson.dumps(params_to_store_in_authenticated_session).decode(),
                 expiry_seconds=EXPIRABLE_SESSION_VAR_DEFAULT_EXPIRY_SECS,
             )
+    # PORTAL EDENU: Store custom profile fields in session for user creation
+    if custom_profile_field_name_to_value:
+        set_expirable_session_var(
+            request.session,
+            "registration_custom_profile_field_name_to_value",
+            orjson.dumps(custom_profile_field_name_to_value).decode(),
+            expiry_seconds=EXPIRABLE_SESSION_VAR_DEFAULT_EXPIRY_SECS,
+        )
 
     try:
         # TODO: This should use get_realm_from_request, but a bunch of tests
@@ -419,6 +429,8 @@ def register_remote_user(request: HttpRequest, result: ExternalAuthResult) -> Ht
         "params_to_store_in_authenticated_session",
         "redirect_to",
         "external_auth_id_dict_for_registration",
+        # PORTAL EDENU: Custom profile fields to sync during user creation
+        "custom_profile_field_name_to_value",
     ]
     for key in dict(kwargs):
         if key not in kwargs_to_pass:
@@ -1273,8 +1285,15 @@ def json_fetch_api_key(
     realm = get_realm_from_request(request)
     if realm is None:
         raise JsonableError(_("Invalid subdomain"))
-    if password_auth_enabled(user_profile.realm) and not authenticate(
-        request=request, username=user_profile.delivery_email, password=password, realm=realm
+    # PORTAL EDENU: SAML-authenticated owners have no local password, so the
+    # re-auth prompt can never succeed for them; admins/owners skip it.
+    portal_edenu_admin_key_fetch = settings.PORTAL_EDENU and user_profile.is_realm_admin
+    if (
+        password_auth_enabled(user_profile.realm)
+        and not portal_edenu_admin_key_fetch
+        and not authenticate(
+            request=request, username=user_profile.delivery_email, password=password, realm=realm
+        )
     ):
         raise JsonableError(_("Password is incorrect."))
 

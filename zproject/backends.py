@@ -18,7 +18,7 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from email.headerregistry import Address
 from typing import TYPE_CHECKING, Any, TypedDict, TypeVar, cast
 
@@ -1839,6 +1839,8 @@ class ExternalAuthDataDict(TypedDict, total=False):
     # The mobile app doesn't actually use a session, so this
     # data is not applicable there.
     params_to_store_in_authenticated_session: dict[str, str]
+    # PORTAL EDENU: Custom profile fields to sync during user creation
+    custom_profile_field_name_to_value: dict[str, Any]
 
 
 class ExternalAuthResult:
@@ -1958,9 +1960,9 @@ def validate_custom_profile_field_data_for_sync(
     doesn't match any field or a value fails validation."""
     fields_by_var_name: dict[str, CustomProfileField] = {}
     custom_profile_fields = custom_profile_fields_for_realm(realm_id)
-    for field in custom_profile_fields:
-        var_name = "_".join(field.name.lower().split(" "))
-        fields_by_var_name[var_name] = field
+    for custom_field in custom_profile_fields:
+        var_name = "_".join(custom_field.name.lower().split(" "))
+        fields_by_var_name[var_name] = custom_field
 
     profile_data: list[ProfileDataElementUpdateDict] = []
     for var_name, value in custom_field_name_to_value.items():
@@ -2245,6 +2247,8 @@ def ensure_missing_groups(
 class SocialAuthSyncNewUserInfo:
     role: int | None
     group_memberships_sync_map: dict[str, bool]
+    # PORTAL EDENU: Custom profile fields to sync during user creation
+    custom_profile_field_name_to_value: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -2437,8 +2441,12 @@ def social_auth_sync_user_attributes(
         else:
             group_memberships_sync_map = {}
 
+        # PORTAL EDENU: Include custom profile fields in signup info so they can
+        # be applied after user creation.
         return SocialAuthSyncNewUserInfo(
-            role=new_role, group_memberships_sync_map=group_memberships_sync_map
+            role=new_role,
+            group_memberships_sync_map=group_memberships_sync_map,
+            custom_profile_field_name_to_value=custom_profile_field_name_to_value,
         )
 
     # Based on the information collected above, sync what's needed for the user_profile.
@@ -2830,6 +2838,11 @@ def social_auth_finish(
                     group_memberships_sync_map=social_auth_sync_new_user_info.group_memberships_sync_map,
                 )
             )
+            # PORTAL EDENU: Pass custom profile fields through for user creation
+            if social_auth_sync_new_user_info.custom_profile_field_name_to_value:
+                data_dict["custom_profile_field_name_to_value"] = (
+                    social_auth_sync_new_user_info.custom_profile_field_name_to_value
+                )
         external_auth_id_dict_for_registration = return_data.get(
             "external_auth_id_dict_for_registration"
         )
