@@ -1452,3 +1452,131 @@ input.invalid-input {
 .zulip-icon-loader-circle {
     animation: spin 1s linear infinite;
 }
+
+/* PORTAL EDENU: reputation bar, mirroring mapa.edenu.pl's reputationBarHtml.
+   Shared by the message row, right-sidebar user list, and profile modal. */
+.rep-bar {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    width: 15em;
+    height: 1em;
+    margin-left: 6px;
+    overflow: hidden;
+    border: 1px solid hsl(0deg 0% 80%);
+    border-radius: 999px;
+    background: linear-gradient(to bottom, hsl(0deg 0% 78%), hsl(0deg 0% 95%));
+    box-shadow: 0 1px 2px hsl(0deg 0% 0% / 18%);
+    vertical-align: middle;
+    text-decoration: none;
+}
+
+.rep-bar:hover {
+    text-decoration: none;
+}
+
+.rep-bar-label {
+    position: absolute;
+    top: 50%;
+    left: 0.4em;
+    z-index: 1;
+    color: hsl(0deg 0% 30%);
+    font-size: 0.78em;
+    font-weight: 700;
+    transform: translateY(-50%);
+    pointer-events: none;
+}
+
+.rep-bar-track {
+    display: flex;
+    width: 100%;
+    height: 100%;
+}
+
+.rep-bar-seg {
+    height: 100%;
+}
+
+.rep-bar-presence {
+    border-radius: 999px 0 0 999px;
+    background: linear-gradient(to bottom, hsl(0deg 0% 100%), hsl(0deg 0% 94%));
+}
+
+.rep-bar-activity {
+    background: linear-gradient(
+        to bottom,
+        var(--color-background-brand-solid-action-button),
+        hsl(211deg 39% 23%)
+    );
+}
+
+.rep-bar-rating {
+    /* PORTAL-MOD: matches portal-edenu gold (#ffd700 -> #daa520) */
+    background: linear-gradient(
+        to bottom,
+        hsl(51deg 100% 50%),
+        hsl(43deg 74% 49%)
+    );
+}
+
+.rep-bar-last {
+    border-radius: 0 999px 999px 0;
+}
+
+.rep-bar-deficit-wrap {
+    border-radius: 999px 0 0 999px;
+    background: hsl(0deg 0% 100%);
+}
+
+.rep-bar-deficit {
+    display: block;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        to bottom,
+        hsl(0deg 94% 82%),
+        hsl(0deg 72% 51%)
+    );
+}
+
+/* Buddy list: slim bar — fixed 5px height, 75% of base width (still font-scaled). */
+li.user_sidebar_entry .rep-bar {
+    /* 2/3 the message-row bar width (~12.85em). */
+    width: 8.57em;
+    height: 5px;
+    /* Align left edge with the avatar's left edge. The avatar sits inside
+       .selectable_sidebar_block whose padding-left = right-sidebar-header-
+       icon-toggle-width (20px) / 2 = 10px. */
+    margin-left: 10px;
+}
+
+li.user_sidebar_entry .rep-bar-label {
+    /* Text won't fit a 5px bar; the tooltip still carries the detail. */
+    display: none;
+}
+
+/* Tighter in the message row where horizontal space is scarce (~12.85:1). */
+.message_row .rep-bar {
+    width: 12.85em;
+    /* .message_sender is a flex container with align-items: baseline; the bar
+       would otherwise sit on the text baseline (too high). Center it instead. */
+    align-self: center;
+}
+
+/* Under the full-name heading in the profile modal; sits on its own line. */
+#user-profile-modal .rep-bar {
+    display: flex;
+    width: 15em;
+    margin-top: 0.4em;
+    margin-right: auto;
+    margin-left: auto;
+}
+
+/* PORTAL EDENU: "Pokaż na mapie" link under the full-name heading. */
+#user-profile-modal .portal-map-link {
+    display: block;
+    margin-top: 0.4em;
+    font-size: 0.9em;
+    text-align: center;
+    text-decoration: none;
+}
