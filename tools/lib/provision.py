@@ -166,6 +166,12 @@ if (vendor == "debian" and os_version == "13") or (vendor == "ubuntu" and os_ver
         "libmsgpack-dev",
         *VENV_DEPENDENCIES,
     ]
+    if vendor == "debian":
+        # PORTAL EDENU: backport of upstream 2e7388ff4f; drop when 12.x gets it.
+        # libarrow2600 from packages.groonga.org links against
+        # opentelemetry-cpp without depending on it; see
+        # https://github.com/apache/arrow/issues/55112
+        SYSTEM_DEPENDENCIES.append("opentelemetry-cpp")
 elif "debian" in os_families():
     DEBIAN_DEPENDENCIES = UBUNTU_COMMON_APT_DEPENDENCIES
 
